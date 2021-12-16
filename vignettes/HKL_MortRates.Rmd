@@ -1,0 +1,39 @@
+---
+title: "NNSH Hook & Line Mortality Rates"
+author: "Jason Jannot"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warnings=FALSE, results='hide'}
+knitr::opts_chunk$set( echo = FALSE,
+                       warnings = FALSE,
+                       message = FALSE,
+                       include = TRUE)
+library(tidyverse)
+qdf <- function(..., .saf = FALSE) {
+  data.frame(..., stringsAsFactors = .saf)
+}
+
+```
+
+```{r include=TRUE, results='asis'}
+hklmortrates <- read.csv(file = paste0(path_data, "AG_HKL_MortRates.csv"),
+                        header = TRUE, stringsAsFactors = FALSE)%>%
+                 dplyr::slice(2:nrow(.))%>%
+                 setNames(., nm = slice(., 1))%>%
+                 dplyr::slice(2:nrow(.))%>%
+                 dplyr::mutate(MortalityRate = sprintf("%.2f", as.numeric(MortalityRate)),
+                        Gear = "Hook & Line",
+                        Sector = "Catch Shares")%>%
+                 dplyr::select(Sector, Gear, everything())%>%
+                 qdf()
+
+flxtbl_fxn(hklmortrates, hdrs = list(Sector = "Sector", Gear = "Gear",
+                                      Injury_HooknLine = "Injury Status",
+                                      MortalityRate = "Mortality Rate")) %>%
+            flextable::merge_v(., j = "Sector")%>%
+            flextable::merge_v(., j = "Gear")%>%
+            flextable::autofit()
+ 
+```

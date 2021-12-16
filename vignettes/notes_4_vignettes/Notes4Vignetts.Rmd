@@ -1,0 +1,53 @@
+---
+title: "Scratch for Annual Report Vignette"
+author: "Jason Jannot"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Scratch Notes for incorporating into the Annual Report Vignette
+
+# Functions for all sectors
+`match_trip_phlb`
+`get_trips`
+`load_rdat()`
+`sector.names()` - needs Roxygen
+`get.sector()`
+`OB.processing()` - small change relative to KS version
+`check_phlb_data()`
+`load_data_modified()`
+`est_mort_injury` - for hkl
+`est_mort_viabs`
+`get.sector`
+`haul_dur`
+``
+
+# Catch Shares
+## files
+`CS_Btwl.R`
+`CS_Hkl.R`
+`CS_Pot.R`
+`CS_MidHake.R`
+`CS_MidRock.R`
+##functions
+`gemm_cs`
+`es_fig_data_cs` - need to add these together each year before plotting
+`nb_cs`
+`weighted_lfs`
+`format_hkl_injury`
+`format_cs_ratios`
+`format_cs_viabs`
+## LE Trawl 2002-2010
+`LE_Trawl0210.R`
+
+# A-SHOP
+##functions
+`AS_phlb`
+
+# NCS Sectors
+##functions
+`summarize_ncs_coverage`
+
+
+# scripts
+`IBQ_Allocation.R` - need to ad each year of IBQ P. halibut allocation to this file

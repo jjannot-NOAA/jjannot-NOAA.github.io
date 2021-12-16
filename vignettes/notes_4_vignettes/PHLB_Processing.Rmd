@@ -1,0 +1,797 @@
+---
+title: "phlbbycatcher: Pacific halibut Report Processing"
+author: "Jason Jannot"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: TRUE
+    toc_depth: 3
+    theme: readable
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(kableExtra)
+library(formatR)
+
+data.year <- 2018
+
+## -- Functions
+qdf <- function(.){data.frame(., stringsAsFactors = FALSE)}
+
+## -- Drives
+if(dir.exists('~/observer/')){
+      drive1   <- '~/observer/Input/'
+      drive2   <- paste0("~/observer/Output/Pacific Halibut/PHLB ", data.year,"/")
+      drive3   <- "~/observer/Output/"
+      drivesrc <- "~/observer/Input/PHLB/PHLB Report Code Version Control/"
+}else{
+  
+      drive1   <- 'V://Input/'
+      drive2   <- paste0("V://Output/Pacific Halibut/PHLB ", data.year,"/")
+      drive3   <- "V://Output/"
+      drivesrc <- "V://Input/PHLB/PHLB Report Code Version Control/"
+
+}
+
+knitr::opts_chunk$set( echo     = TRUE,
+                       message  = FALSE,
+                       warning  = FALSE,
+                       eval     = TRUE,
+                       fig.show = TRUE, 
+                       root.dir = paste0(drive2, "/Documentation/"))
+
+
+#source ("~/observer/Input/PHLB/PHLB Report Code Version Control/Intro2.R", echo=FALSE)
+```
+
+### Acronyms Used in this Document
+A-SHOP - At-Sea Hake Observer Program  
+CCC    - Catch Category Code  
+<tt>data.year</tt> - The most recent year of available observer and FT data, usually equal to the current year minus 1.</br>
+note: wherever you see `<data.year>` referenced in this document, replace that with the actual value of the current data year, e.g., 2017 or whatever.</br>  
+EM     - Electronic Monitoring  
+FOS    - Fisheries Observation Science, a.k.a., NWFSC Observer Program, includes both A-SHOP and WCGOP  
+FT     - Fish Ticket  
+LBK    - Logbook  
+NWFSC  - Northwest Fisheries Science Center  
+OB     - Observer
+PHLB   - Pacific halibut   
+PSMFC  - Pacific States Marine Fisheries Commission  
+TM     - short for `Tech Memo` in reference to NOAA Technical Memorandum    
+WCGOP  - West Coast Groundfish Observer Program  
+
+# `phlbbycatcher`
+
+## Required Inputs
+
+`OBOrig_Pre`, possibly `OBOrig_Proc`
+`SPC` file, loaded to global environment
+
+<!--- 2020-07-16: BELOW NEEDS REVISION -->
+<!-- # How to Produce the P. halibut Report -->
+<!-- As of `r Sys.Date()`, the P. halibut reporting has been automated to the greatest extent possible.  Under the ideal circumstances, one would do the following to produce the report. -->
+
+<!-- 1. Update the input files     -->
+<!--     a. Request new data      -->
+<!--         i. Request new PHLB data from FRAM Data Team (Jim Fellows as of `r Sys.Date()`)     -->
+<!--         ii. Request new OB, EM, FT, A-SHOP data from Groundfish Mortality lead (K. Somers as of `r Sys.Date()`)</br> -->
+<!--         iii. Request new A-SHOP PHLB length frequency data from A-SHOP manager (V. Tuttle as of `r Sys.Date()`)</br> -->
+<!--         iv. Request new PHLB map from GIS analyst (K. Somers as of `r Sys.Date()`)     -->
+<!-- 2. Update the functions, reference files, FT and OB file names in Section \@ref(#sec:libsfuncsdata) of this document. Note that the *PHLB_Processing.Rmd* code calls *Intro2.R* which is where the lastest version of the libraries, functions, and reference files are stored.  So this will need to be updated as well.     -->
+<!-- 3. Update the P. halibut data in the Data_Checking.r  file.     -->
+<!-- 4. Update for confidentiality     -->
+<!--     a. CS strata - use lines 127-137 in `CatchShares.R` to check/fix     -->
+<!--         i. Hook-&-line vessels: Can you use Pt. Chehalis break or must it be coastwide?     -->
+<!--         ii. Pot vessels south of 4010 N. - enough or not?     -->
+<!--         iii. Midwater rockfish - should it be combined with bottom trawl? midwater hake?     -->
+<!--         iv. Midwater hake - with EM do we have enough to report?     -->
+<!--     b. Pink shrimp by state - CA and WA enough coverage to report?     -->
+<!-- 5. Review Notes (Section \@ref(#sec:annNotes)) for current year and implement any changes in appropriate code (code file names are here: \@ref(#sec:Rcodeprocsteps)) -->
+<!-- 6. Run the PHLB_Processing.Rnw code (this document).  This document uses `source` to run most of the R code (see below \@ref(#sec:Rcodeprocsteps)). -->
+<!-- 7. Review the table comparisons between this year and last year.  Most, but not all, comparison tables should have zeros.  Investigate and resolve any issues. -->
+<!-- 8. Review the Report output tables in this document. Compare to prior year's report.  Note that the format of these tables might not match formatting in the final report because of changes in the formatting in the report code. -->
+<!-- 9. Reivew tables for confidentiality issues. -->
+<!-- 10. Use tables in this document to update the text of the report, PHLB_*<data year>*_Full_Report.Rnw. -->
+<!-- 11. Run the PHLB_*<data year>*_Full_Report.Rnw code.  Review report. -->
+<!-- 12. Stich TODO_List.Rnw and IPHC_MeetingAgendaNotes.Rnw onto Processing Doc  *.pdf*. -->
+<!-- 13. Copy annual processing doc to appropriate folder on network ObserverData-Analysis-Data-*dataYear* folder. -->
+<!-- 14. Stitch cover and ciation page into Report *.pdf* and submit for internal review. -->
+<!-- 15. Send to IPHC for review prior to council meeting. -->
+<!-- 16. Make any changes and submit to council. -->
+<!-- 17. Deliver NBR and GM Multiyear outputs to GM analyst. -->
+<!-- 18. Make any final changes, e.g., from council etc. -->
+<!-- 19. Copy annual final report to appropriate folder on network ObserverData-Analysis-Data-*dataYear* folder. -->
+
+<!-- Note that all output files go to:     -->
+<!-- `nwctantalus/observer/Output/Pacific Halibut/PHLB <*data year* $\textgreater\textbackslash$`   -->
+
+<!-- Depending on the file type, files go into one of the following folders:     -->
+<!-- `Appendices`<\br>     -->
+<!-- `CALCS`<\br>    -->
+<!-- `CORR_SP` (for historical and research use only, these files do not go into report) <\br>    -->
+<!-- `DATA`<\br> -->
+<!-- `Documentation`<\br> -->
+<!-- `Figures`<\br> -->
+<!-- `For Review`<\br> -->
+<!-- `Images`<\br> -->
+<!-- `Infographic`<\br> -->
+<!-- `Inseason`<\br> -->
+<!-- `NBR`<\br> -->
+<!-- `Tables`<\br> -->
+<!-- `TechMemo`<\br> -->
+
+<!-- Most, if not all, files **do not** have a date appended to the file name.  This makes the code more easily used from year to year.  Files are associated with their year via the folder name above.<\br>     -->
+
+<!-- Here's Jason's suggestion for running the code:   -->
+<!-- 1. Create an *.R* file (using your favorite text editor and adjusting the file paths to suit your needs) with the following lines:   -->
+<!-- \ -->
+<!-- `rm(list=ls())<\br>   -->
+<!-- library(knitr)<\br>   -->
+<!-- knit2pdf("~/h_jjannot/PHLB/PHLB_Processing.Rnw", quiet=T)<\br>   -->
+<!-- knit2pdf('~/h_jjannot/PHLB/PHLB_Full_Report.Rnw')<\br>  -->
+<!-- rm(list=ls()) -->
+<!-- ` -->
+<!-- 2. Save the *.R* with a name like *run_PHLB_knitr.R* in your personal *tantalus* folder.<\br> -->
+<!-- 3. Create a new file (again with text editor) with the following lines: <\br>    -->
+
+<!-- `\#!/bin/sh echo "source('run_PHLB_knitr.R')" | /opt/R/64-bit/R-3.4.3/bin/R --no-save`<\br> -->
+
+<!-- You'll want to adjust the R version to a version currently housed on the server. -->
+
+<!-- 4. Save it with a *.sh* extension with a name like *knit_PHLB.sh*<\br> -->
+<!-- 5. Log into tantalus<\br> -->
+<!-- 6. At the Unix `$` prompt, (do not start R) type:     -->
+
+<!-- `\$ at -f knit_PHLB.sh -m NOW`     -->
+
+<!-- This will send a command to run the the PHLB processing and report R codes and knit them (the `-f` option of the `at` command). Tantalus will then email you when the job is done (the `-m` option).  The commands will be executed immediately (the `NOW` option).  See the Ubuntu man page for the `at` command for more details. The email will contain important information about how your job ran and will even contain R and knitr errors.     -->
+
+<!-- Good luck! (your mileage may vary...)</br> -->
+
+<!-- ## P. halibut R Code Processing Steps {#sec:Rcodeprocsteps} -->
+<!-- 1. Data Checking - Run `Data_Checking.r`     -->
+<!--     a. Check Halibut data, FREQUENCY = 1     -->
+<!--     b. If FREQUENCY <1 & VIAB =  <blank>, then need to remove observation from viability analysis     -->
+<!--     c. Pointless to try to 'assign' a viability to blank observations     -->
+<!-- 2. Catch Shares     -->
+<!--     a. Run `CatchShares.r`     -->
+<!--         i. This code creates the necessary tables for the final report and tech memo</br>     -->
+<!--         ii. DISCARD & MORTALITY : Code estimates P. halibut gross discard and discard mortality</br>     -->
+<!--             1. Estimates P. halibut discard from unsampled hauls or unsampled portions of the haul.     -->
+<!--             2. These include the catch categories and areas (based on discussions between McVeigh and Jannot June-July 2012):     -->
+<!--             - ZMIS  - Unsampled mixed of all *discarded* species, both IFQ and Non-IFQ.     -->
+<!--             - IFQM  - Mixed IFQ species-2011 assumption: north of 4010 only     -->
+<!--             - IFQFF - Mixed IFQ flatfish species-2011 assumption: north of 4010 only     -->
+<!--             - NIFQ  - non-IFQ species.  P. halibut is a non-IFQ south of 4010, therefore must assume it is included in this catch category south of 4010.     -->
+<!--             - UNST  - Unsampled mix of all *catch*, including both discarded and *what would have been retained*. Distinguished from Unsampled ZMIS above, which only contains unsampled discards.     -->
+<!--             - FAILED -	We know the amount of retained weight based on associated fish tickets, so we only need to estimate the amount of discard (about which we know nothing). `DATATYPE = Failed Data`     -->
+<!--         iii. Sums P. halibut discard from the SAMPLED portion of unsampled hauls     -->
+<!--         iv. In 2016, we assumed that*any CS haul, including partially sampled hauls* with sampled P. halibut, the P. halibut was assumed **not** to be sampled and therefore, we expand based on all weight regardless of PHLB recording or not.     -->
+<!--     b. VIABILITY : Included in the 'CatchShares.R' code.     -->
+<!--         i. This code includes analysis of legal/sublegal     -->
+<!--     c. Run : `CS_WEIGHTED_lengthfrequencies.r` This produces output for Appendix     -->
+<!--     d. Run `Figure_IFQBtrwl_Vess_Tow_Hrs_by_Month_Year.R` : Produces IFQ figure for tow hours over the season.     -->
+<!-- 3. Run `ASHOP_PHLB.R` This produces the ASHOP PHLB table from the data provided by the GM Analyst.     -->
+<!-- 4. Non-Catch Shares     -->
+<!--     a. DISCARDS & MORTALITY     -->
+<!--         i. Run `OB_processing_fg_FinalCode.r` inlcudes NonNearshore Fixed Gear Sectors     -->
+<!--         ii. Run `FG_Est_Mort_Fig.r` Creates the non-nearshore fixed gear mortality figure.     -->
+<!--         iii. Run `OB_Processing_OtherSectors.r` includes Nearshore, Pink Shrimp and OA CA Halibut     -->
+<!--         iv. Run `PHLBDerby.R` tp produce the estimates for the P. halibut directed fishery (added 2017).     -->
+<!--         v. Run `SeaCukes.R` to produce the estimates for the Sea Cucumber fishery (added 2017).     -->
+<!--         vi. Run `RidgePrawn.R` to produce the estimates for the CA ridgeback prawn fishery (added 2017).     -->
+<!-- 5. LENGTH FREQUENCIES AND VIABILITIES : Run `LengthFreq_PHLB_Allsectors_gears.r`. This produces LFs for IFQ, Non-Nearshore and A-SHOP sectors. Also produces the legal vs. sub-legal comparison.     -->
+<!--     a. Visual estimates for the 2008-09 LE Primary fishery were given to Eliza in an *excel data sheet* (`LE_Primary_PHLB_VisualLengths_combinedBins_0809.xls`).  This file was produced from a series of excel files and the R code `FG_visual_LFS_getting_gears.r". These data were finally entered into the database in 2018-19.     -->
+<!-- 6. Executive Summaries - Run `ExecSummaryCode.R`  This produces:     -->
+<!--     a. Summary Table for Report Body, including summaries for PHLB Directed, SeaCukes, and RPrawns ( automatically executes `DerbyPrawnCukeSummary.R`)     -->
+<!--     b. Executive Summary Table     -->
+<!--     c. Executive Summary Figure     -->
+<!--     d. Summary for GM Multiyear product     -->
+<!-- 7. PRE- Catch Shares (2002-2010) : HAS NOT BEEN RUN SINCE 2011</br> -->
+
+<!-- # Table, Figure, and Picutre References in the Full Report Code -->
+<!-- The reference labels (originally in LaTeX) used for [tables](#tablabs), [figures](#figlabs), [appendices](#appdxlabs), and other objects can be found at the end of this document.  The reference label for each object has a prefix that is particular to that object, followed by a colon (:) - tables - prefix = tab:, figures - prefix=fig:, appendicies - prefix=appdx:. So for example the reference label `tab:twlcovIFQ` is the reference label for the IFQ bottom trawl coverage table.  This labelling allows for cross referencing of objects within the document, e.g., ` tab:twlcovIFQ` would produce the correct table number for the IFQ bottom trawl coverage table that is hyperlinked to that table (highlighted in blue).  It is useful to keep track of these labels for referencing when writing the document and searching R code. -->
+
+<!-- # Pacific halibut Data Pull -->
+<!-- PHLB Biosamples Request for 2002-`r data.year` data -->
+<!-- The Example file available on the network at:<\br> -->
+
+<!-- `FRAM\Observer\observerData\Analysis_Library\Data_Library\*`r data.year`*\Raw Pulls From Neil\PHLB`<\br> -->
+
+<!-- This file includes the data fields below, limited to PHLB only and not limited by SAMPLE_METHOD or EFP.<\br> -->
+
+<!-- ## Data Fields in PHLB Pull -->
+<!-- `TRIP_ID & PROGRAM_ID & EFP`<\br> -->
+<!-- `FISHING_ACTIVITY_ID & BIO_SPECIMEN_ID & DRVID`<\br> -->
+<!-- `GEAR_TYPE & GEAR & GEAR_PERFORMANCE`<\br> -->
+<!-- `TARGET & DMONTH & DDAY`<\br> -->
+<!-- `DYEAR & D_PORT & D_PORT_GROUP`<\br> -->
+<!-- `RMONTH & RDAY & RYEAR`<\br> -->
+<!-- `R_PORT & R_PORT_GROUP & SET_MONTH`<\br> -->
+<!-- `SET_DAY & SET_YEAR & SET_TIME`<\br> -->
+<!-- `SET_LAT & SET_LONG & SET_DEPTH`<\br> -->
+<!-- `SET_DEPTH_UM & UP_MONTH & UP_DAY`<\br> -->
+<!-- `UP_YEAR & UP_TIME & UP_LAT`<\br> -->
+<!-- `UP_LONG & UP_DEPTH & UP_DEPTH_UM`<\br> -->
+<!-- `HAUL_DURATION & HAUL_DUR_UM & AVG_LAT`<\br> -->
+<!-- `AVG_LONG & AVG_DEPTH & FISHERY`<\br> -->
+<!-- `SPECIES_CODE & SPECIES_CATEGORY & SPECIES_SUB_CATEGORY`<\br> -->
+<!-- `COMMON_NAME & SCIENTIFIC_NAME & CATCH_DISPOSITION`<\br> -->
+<!-- `DISCARD_REASON & CATCH_CATEGORY_CODE & PACFIN_SPID`<\br> -->
+<!-- `LF_LENGTH & LF_LENGTH_UM & LF_SEX`<\br> -->
+<!-- `MATURITY & SPECIMEN_LENGTH & SPECIMEN_LENGTH_UM`<\br> -->
+<!-- `SPECIMEN_SEX & SPECIMEN_WEIGHT & WEIGHT_UM`<\br> -->
+<!-- `SAMPLE_METHOD & AGE & FREQUENCY`<\br> -->
+<!-- `SPECIMEN_SOURCE & DISSECTION_BARCODE & NOTES`<\br> -->
+
+# `Intro2.R`
+{#sec:intro}
+First, we run the `Intro2.R` code which will load the necessary libraries, the most up-to-date functions (including specially written functions in `PHLBFunctions.R`), the observer (WCGOP + A-SHOP) halibut and catch data, fish ticket data, and EM data. `Intro2.R` will need to be updated each year.
+```{r}
+
+phlb_intro_Hist <- data.frame(Mod.Year = c(rep(2014,1),
+                                             rep(2015, 2),
+                                             rep(2016, 2),
+                                             rep(2019, 2),
+                                           rep(2020, 1)),
+                          Month        = c(rep("Jun", 3), "May", rep("Jun", 2), "Jul", "May"),
+                          Modification = c("Original coding",
+                            "Bring in interactive loading of data.",
+                            "Disable interactive loading for Intro2.R so that everything (except data) can be loaded without causing issues in knitR doc.",
+                            "Loads files even when not in interactive mode",
+                            "knitr treats the Data_Funcs file as interactive but provides no mechanism for inputing responses.  Thus have removed interactive file here - hard code file names into main code.",
+                            "Update for 2018.",
+                            "Load OBOrig_Pre_Full, for use in infographic",
+                            "Update for 2019"),
+           Author           = c(rep("J. Jannot", 8)),
+           Affiliation      = c(rep("NOAA", 8)),
+           stringsAsFactors = FALSE)
+
+knitr::kable(phlb_intro_Hist,
+      booktabs = TRUE,
+      caption  = "History of the`Intro2.R` code, 2014-present.")
+
+```
+
+# `AnnualData.R`
+Prepares the annual PHLB data and calls all the PHLB data: WCGOP PHLB bio-specimens, A-SHOP PHLB data, and A-SHOP PHLB length frequencies.
+```{r}
+
+ann_dat_chk_Hist <- data.frame(Mod.Year = c(rep(2019, 1),
+                                             rep(2020, 1)),
+                          Month        = c(rep("May", 2)),
+                          Modification = c("Original coding",
+                            "Added the phlb data prep. Updated for 2019."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable(ann_dat_chk_Hist,
+      booktabs = TRUE,
+      caption  = "History of the`AnnualData.R` code, 2019-present.")
+
+```
+
+# `Data_Checking.R`
+This code does a series of checks on the data that is provided by WCGOP data manager (as of `r Sys.Date()`, Neil Riley).  It first reads in the P. halibut data from the *.txt* file provided by the data manager.  It then checks to see if we have the following data fields and checks for how they are named: SAMPLE_METHOD, HAUL_ID. In the past, these fields have caused errors in the downstream estimation code.  It then checks to see if we have multiple gears on the same Catch Shares trip, as that will cause problems.  It then checks to ensure that FREQUENCY==1.  Finally it checks to see if we have a weight associated with each length.  In 2012, there are 5 trips where only weights and no lengths were taken. The chunk being read in is called dat_chk.
+
+**IMPORTANT NOTE: It is pointless to try to assign viabilities when FREQUENCY<1 and VIAB== <blank>.** Jason Jannot wasted much time trying to figure out if this could be done in a sound manner, and has concluded it cannot.
+
+```{r}
+
+phlb_dat_chk_Hist <- data.frame(Mod.Year = c(rep(2014,2),
+                                             rep(2015, 2),
+                                             rep(2016, 2),
+                                             rep(2018, 2),
+                                             rep(2019, 1),
+                                             rep(2020, 2)),
+                          Month        = c(rep(c("Jun", "July"), 2), "May", "Jun", 
+                                           rep("May", 5)),
+                          Modification = c("Original coding",
+                            "Updated with Kayleigh's comments.",
+                            "1st run with 2014 data. Testing out Intro file.",
+                            "2014 data pull no. 2. Ryan and debriefing team corrected numerous errors.",
+                            "1st run with 2016 data.",
+                            "Streamlining code for 2017.",
+                            "1st run with 2017 data.",
+                            "Add biosamples plot to this document.",
+                            "1st run with 2018 data.",
+                            "Move the phlb data prep to `AnnualData.R`.",
+                            "1st run with 2019 data."),
+           Author           = c(rep("J. Jannot", 11)),
+           Affiliation      = c(rep("NOAA", 11)),
+           stringsAsFactors = FALSE)
+
+knitr::kable(phlb_dat_chk_Hist,
+      booktabs = TRUE,
+      caption  = "History of the`Data_Checking.R` code, 2014-present.")
+
+```
+
+Plot the number of *total* PHLB biosamples, summed across years, by year.  Number should be larger than previous year.
+```{r bioSamps, eval=TRUE, message=TRUE, tidy=TRUE, echo=TRUE, results='markup'}
+   # newval   <- data.frame(Year = data.year,
+   #                        no.Lengths = length(phlb$LENGTH),
+   #                        stringsAsFactors = FALSE)
+   # 
+   # load(file = paste0("~/observer/Output/Pacific Halibut/PHLB ", data.year,"/DATA/bioSamps.Rda"))
+   # bioSamps <- rbind(bioSamps, newval)
+   # save(bioSamps, file = paste0("~/observer/Output/Pacific Halibut/PHLB ", data.year,"/DATA/bioSamps.Rda"))
+   # 
+   # print(ggplot(bioSamps, aes(Year, no.Lengths)) +
+   #   geom_col())
+
+```
+
+# `CatchShares.R`
+Note that for Catch Shares, we need the Failed Data field to expand the little bit of unsampled catch.  That requires the use of `OBOrig_Pre` rather than `OBOrig_Proc`.
+
+```{r}
+CatchShares_Hist <- data.frame(Mod.Year = c( rep(2012, 3),
+                                             rep(2013, 2),
+                                             rep(2014, 6),
+                                             rep(2015, 4),
+                                             rep(2016, 2),
+                                             rep(2017, 1),
+                                             rep(2018, 3),
+                                             rep(2019, 1),
+                                             rep(2020, 1)),
+                          Month        = c(  "May", rep("Jun",2),
+                                             rep("July", 2),
+                                             "Jun", rep("July", 4), "Oct",
+                                             rep("Jun", 2), rep("Aug", 2),
+                                             "Jun", "Aug",
+                                             rep("Jun", 5),
+                                             "May"),
+                          Modification = c("Original coding",
+                            "First look was wrong data.This is the first look at new pull and a stab at the viability stuff. The data need to be pulled again because no FISHING_ACTIVITY_ID field (i.e., HAUL_ID) was included. Once the unsampled hauls are expanded, the amounts need to be added into the OB data set before use in viability.",
+                            "Need to use IPHC length-weight conversion table to estimate weights.",
+                            "First Run with 2002-2012 data. This is a mash-up code that includes code from `U:\\WCGOP Reports\\Pacific Halibut\textbackslash 2011 Report\\CatchShares.r` (my external drive) AND `Y:\\tobserverData\\Analysis_Library\\Product Library\\2011\\Bycatch Reports\\Pacific Halibut\\Catch_Shares_PHLB_Expansions_AWH120808.r` (`FRAM\\observerData` Network space).",
+                            "Hopefully the final run.<\br> 1. Stratification: I have run this code using 2 different strata:<\br> a. year-sector-gear-depth-area-lbs.corr.spp.per.hr<\br> b. year-sector-gear-depth-area<\br> c. NOTES: 2 represents the strata used in the 2012 report. In 2013. I keep 2 as the 'reporting' strata.  I provide strata 1 in an appendix. Strata 1 was requested by the SSC in 2012. At this point, there appears to be a very small difference btwn the two strata. Strata 2 appears to give ~ 0.3 mt more discard over the entire two year period and all strata (i.e., summing across all strata, all years).<\br> 2. Other notes:<\br> a. Note that I have a kludgy fix for the CCC = `UNST`. Fix in 2014.<\br> b. Because of the use of strata 2 as the reporting strata, I did NOT create a haul-level version of the expansions using strata 1. I'm not certain it makes a huge difference anyway given the ~0.3 mt.",
+                            "Start coding for 2014.",
+                            "Incorporate Kayleigh's comments.",
+                            "Combine LE CA Halibut and Catch Shares. This also involves changing the strata.",
+                            "2012 LE CA Halibut and 2012 IFQ H&L have to remain starred out because of confidentiality. If they are combined with other years or areas then someone could look at old report and compare to new report and figure out how much was caught in the confidential strata.  This would violate MSA and other confidentiality laws.  I need to change those years back to what they were.",
+                              "Fix the IFQ trawl monthly to include both the CS and the CS + LE CA Halibut sectors.",
+                            "FIX THE VIABILITIES- SHOULD BE USING IPHC CONVERSION TABLE which is round weights.",
+                            "1st run with 2014 data. Testing Intro.R source. 2014 CS H&L needs to be Coastwide as only 1 vess S4010. Code adapted as a knitR chunk for read_chunk incorporation into knitR documentation. Chunk name==`cs_phlb`",
+                            "Code adapted as a knitR source for incorporation into knitR documentation. Could not get `read_chunk` to play nice",
+                              "Include method for failed data.  Include Coastwide strata for POT because POT N Pt. Chehalis is confidential.",
+                            "IMPORTANT NOTE AND CHANGE: In 2011 and 2012, PHLB that was sampled in partially sampled hauls had to be separated.  This code still does that.  However, starting in 2013 and RETROACTIVELY, R. Shama and N. Riley made it so that any PHLB that was sampled in partially sampled hauls was included in sampled hauls.  I did not take this into account in the 2014 report.  Therefore in Table 5 of the 2014 report, the expanded and sampled columns do NOT add to the total.  I have temporarily fixed the code so that in the 2015 report, the expanded and sampled hauls DO add to the total.",
+                            "Added 2015 data. Zero LE CHLB trips in 2016. New sectors: Midwater Rockfish, Midwater Hake. In gear.type function, I assign gear, AVG_LAT, & AVG_DEPTH to vessels where DATATYPE = Trip Without Catch according to K. Somers 2016 Sector Coverage code. Completely re-coded the coverage section, many objects deprecated.",
+                            "Removed SOME of the correlated species code and save it in `CorrSpecies_Appdces.R`. This needs to be completed in 2017. Also streamlined the coverage code and reconciled the way unsampled CCCs are handled by debriefers with the estimation process.",
+                            "Added function to dynamically change `add.to.row$pos` option in latex tables.",
+                            "Add 2017 data.",
+                            "Moved the loading of viability data to Intro2.R. Pot is summarized coastwide for confidentiality.",
+                            "Fix viability tables",
+                            "Update for 2018 data.",
+                            "Update for 2019 data."),
+           Author           = c(rep("J. Jannot", 23)),
+           Affiliation      = c(rep("NOAA", 23)),
+           stringsAsFactors = FALSE)
+
+knitr::kable(CatchShares_Hist,
+      booktabs = TRUE,
+      caption  = "History of the`ChachShares.R` code, 2012-present.")
+
+```
+
+
+```{r}
+confstrat_TWL <- data.frame(Sector = c("LE CA Halibut", rep("Catch Shares", 4)),
+                            Area = rep("South of 4010 N. lat", 5),
+                             Gear   = rep("Bottom Trawl", 5),
+                             Data_Year = c(rep(2012, 2), 2016, 2018, 2019),
+                             Solution = rep("*-out", 5),
+           stringsAsFactors = FALSE)
+
+knitr::kable(confstrat_TWL,
+      booktabs = TRUE,
+      caption  = "Catch Shares bottom trawl confidential strata by year.")
+
+confstrat_noTWL <- data.frame(Sector = c(rep("Catch Shares", 7), "Midwater Rockfish", "Midwater Hake"),
+                         Gear   = c(rep("Pot", 6), "Hook & Line", rep("Midwater Trawl", 2)),
+                         Data_Year = c(2014, 2016, 2017, 2018, 2019, 2019, 2011, 2019),
+                         Solution = c(rep("coastwide summary", 7), rep("*-out", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable(confstrat_noTWL,
+      booktabs = TRUE,
+      caption  = "Catch Shares non-bottom trawl confidential strata by year.")
+
+```
+
+# `EFP_incl_CS_EM_Code.R`
+Processes the EM logbook data for use in PHLB report.
+```{r}
+
+EFP_incEM_Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable(EFP_incEM_Hist,
+      booktabs = TRUE,
+      caption  = "History of the`EFP_incl_CS_EM_Code.R` code, 2019-present.")
+
+confstrat_EM <- data.frame(Sector = c(rep("Catch Shares EM", 8), "Midwater Rockfish EM"),
+                             Area = c(rep(c("south of 4010 N. lat", "north of Pt. Chehalis"),2),
+                                      rep("north of Pt. Chehalis", 3),
+                                      rep("south of 4010 N. lat", 2)),
+                             Gear   = c(rep(c("Bottom Trawl", "Pot"),2),
+                                        rep("Pot", 4), "Midwater Trawl"),
+                             Data_Year = c(rep(2015, 2), rep(2016, 2), 2017, 2018, rep(2019, 3)),
+                             Solution = rep("*-out", 9),
+           stringsAsFactors = FALSE)
+
+knitr::kable(confstrat_EM,
+      booktabs = TRUE,
+      caption  = "EM confidential strata by year.")
+
+```
+
+
+```
+
+# `TEMPLATE.R`
+
+```{r}
+
+ _ _Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ,
+      booktabs = TRUE,
+      caption  = "History of the` _ _ _Code.R` code,   -present.")
+
+```
+
+# `TEMPLATE.R`
+
+```{r}
+
+ _ _Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ,
+      booktabs = TRUE,
+      caption  = "History of the` _ _ _Code.R` code,   -present.")
+
+```
+
+# `TEMPLATE.R`
+
+```{r}
+
+ _ _Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ,
+      booktabs = TRUE,
+      caption  = "History of the` _ _ _Code.R` code,   -present.")
+
+```
+
+# `TEMPLATE.R`
+
+```{r}
+
+ _ _Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ,
+      booktabs = TRUE,
+      caption  = "History of the` _ _ _Code.R` code,   -present.")
+
+```
+
+# `TEMPLATE.R`
+
+```{r}
+
+ _ _Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ,
+      booktabs = TRUE,
+      caption  = "History of the` _ _ _Code.R` code,   -present.")
+
+```
+
+# `TEMPLATE.R`
+
+```{r}
+
+ _ _Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ,
+      booktabs = TRUE,
+      caption  = "History of the` _ _ _Code.R` code,   -present.")
+
+```
+
+# `TEMPLATE.R`
+
+```{r}
+
+ _ _Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ,
+      booktabs = TRUE,
+      caption  = "History of the` _ _ _Code.R` code,   -present.")
+
+```
+
+# `TEMPLATE.R`
+
+```{r}
+
+ _ _Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ,
+      booktabs = TRUE,
+      caption  = "History of the` _ _ _Code.R` code,   -present.")
+
+```
+
+# `TEMPLATE.R`
+
+```{r}
+
+ _ _Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ,
+      booktabs = TRUE,
+      caption  = "History of the` _ _ _Code.R` code,   -present.")
+
+```
+
+# `TEMPLATE.R`
+
+```{r}
+
+ _ _Hist <- data.frame(Mod.Year = c(2016,
+                                          rep(2020, 1)),
+                          Month        = c("Aug",
+                                           rep("May", 1)),
+                          Modification = c("Original coding(?)",
+                                           "Updates for 2019. Not well documented outside of code."),
+           Author           = c(rep("J. Jannot", 2)),
+           Affiliation      = c(rep("NOAA", 2)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ,
+      booktabs = TRUE,
+      caption  = "History of the` _ _ _Code.R` code,   -present.")
+
+```
+
+<!-- \input{ProcessingDoc4_CatchShares_WeightedLFs_Appdx_Figures.tex} -->
+
+<!-- \input{ProcessingDoc4_NNSHFixedGear.tex} -->
+
+<!-- \input{ProcessingDoc4_OtherSectors.tex} -->
+
+<!-- \input{ProcessingDoc4_PHLBDerby_Prawn_SeaCukes.tex} -->
+
+<!-- \input{ProcessingDoc4_ASHOP.tex} -->
+
+<!-- \input{ProcessingDoc4_ExecSummaryCode.tex} -->
+
+<!-- \input{ProcessingDoc4_EFPs.tex} -->
+
+<!-- \input{ProcessingDoc4_PHLBLengthFrequencyCode.tex} -->
+
+# Council and Post-Council P. halibut Report Process
+a. 2014-present: In 2014 (2013 data), Council did not require formal submission and presentation.  Now submitted as a Public Comment-Informational Report.
+b. 2017: J. Jannot presented CS EM viability assessment to GAP
+c. 2011-2013: J. Jannot presented the Report at PFMC Sept Council Meetings
+## PFMC September Meeting (if attending)
+1. Prepare Powerpoint presentation for the following groups
+    * SSC
+    * GAP
+    * GMT
+    * Council
+        
+2. Brief Program Manager and DD
+  * Provide DD with summary slide for NMFS report
+3. Prepare Travel Request, Reserve Hotel, Arrange Local Transport, Collect receipts
+4. Travel Wrap-up: Submit receipts, Check Voucher against receipts, Stamp Voucher
+5. Post-Council Wrap-up
+  * Obtain Advisory Body (SSC, GAP, GMT) Recommendations
+  * Obtain Council Decision Documents
+  
+## Finalize Report
+1. Add any suggestions from Council meeting
+2. Check grammar & format of Report
+3. Convert to Tech Memo
+4. Draft Letter to IPHC
+5. Final Package, Post on Network
+  * Final Report
+  * PDR, signed
+  * Advisory Body Recommendations & Council Decision (PFMC website)
+  * Final Letter to IPHC, signed
+  * R code (separate folder)
+
+## History of P. halibut Report and IPHC Meetings
+Note: No meeting was held between FOS and IPHC in 2019. 
+```{r reprthist}
+IPHC_mtg_Hist <- data.frame(Role = c(rep("IPHC Lead", 3),
+                                     rep("Lead Debriefer", 2),
+                                     rep("FOS Analyst - PHLB", 2),
+                                     rep("FOS Analyst - GM", 2)),
+                            Years.Active = c("2018-present",
+                                             "2014-2017",
+                                             "2007-2013",
+                                             "2012-present",
+                                             "2007-2012",
+                                             "2011-present",
+                                             "2007-2010",
+                                             "2014-present",
+                                             "2007-2013"),
+                            Contact = c("Ed Henry",
+                                        "I. Stewart, L. Erikson, C. Dykstra",
+                                        "G. Williams (reitred)",
+                                        "R. Shama",
+                                        "J. McVeigh",
+                                        "J. Jannot",
+                                        "E. Heery, J. Wallace, J. Hastie",
+                                        "K. Somers",
+                                        "M. Bellman"),
+           stringsAsFactors = FALSE)
+
+knitr::kable(IPHC_mtg_Hist,
+      booktabs = TRUE,
+      caption  = "History of the FOS-IPHC Meetings, 2007-present.")
+
+``` 
+
+## Tables{#tablabs}
+```{r, tabl_refs, results = 'asis', echo = FALSE}
+table_caps <- read.csv(file = paste0(drive2, "TechMemo/Captions_4TM_Fixed.csv"),
+                       header = TRUE, stringsAsFactors = FALSE)
+
+kable(table_caps,
+      booktabs = TRUE,
+      align    = c("l","l","l", "l", "c"),
+      caption  = paste0("Table captions, short captions, chunk labels where the table is created in the `PHLB_Full_Report.Rnw` document, the table reference label and the table number for the data.year = ", data.year, " report.  In many cases, the chunk and table label are the same.  All table labels have the prefix `tab:`, chunk labels have no prefix."),
+      caption.short = "Table metadata",
+      col.names     = c("Full Caption", "Short Caption", "Chunk Label", "Table Label", "Table Number"),
+      escape        = FALSE,
+      row.names     = FALSE)
+```
+
+
+## Figures{#figlabs}
+```{r, fig_refs, results = 'asis', echo = FALSE}
+fig_caps <- read.csv(file = paste0(drive2, "Figures/Figure_Captions_AltText.csv"),
+                       header = TRUE, stringsAsFactors = FALSE)
+
+kable(fig_caps,
+      booktabs = TRUE,
+      align    = c("l","l","l", "l"),
+      caption  = paste0("Figure captions, alternative text, and the figure number for the data.year = ", data.year, " report.  All figure labels have the prefix `fig:`."),
+      caption.short = "Table metadata",
+      col.names     = c("Caption", "Alt Text", "Figure Label", "Figure Number"),
+      escape        = FALSE,
+      row.names     = FALSE)
+```
+
+
+Also note that I use `sec:` to reference sections within the document, particularly Appendices A, B, and C (e.g., `sec:AppdxA`).
+
+# Notes and Major Changes
+{#sec:annNotes}
+Here I briefly mention important changes to the coding and reporting. If a sector or section of the report is not mentioned, that means no major changes have occurred. Entries are reverse chronological order by the year the report was published, not the data year.
+
+# TEMPLATE
+```{r }
+# 
+# TEMPLATE _Hist <- data.frame(Mod.Year     = 
+#                              Month        = 
+#                              Modification = 
+#                              Author       = 
+#                              Affiliation  = 
+#            stringsAsFactors = FALSE)
+# 
+# knitr::kable(TEMPLATE _Hist,
+#       booktabs = TRUE,
+#       caption  = "History of the`TEMPLATE.R` code, 2014-present.")
+
+```
+
+```{r outtro, echo=FALSE, message=FALSE}
+require(Hmisc)
+gc()
+rm(list=ls())
+pkg <- "knitr"
+pkg.version <- installed.packages()[pkg, 'Version']
+pkg.date <- installed.packages(fields="Date")[pkg, 'Date']
+pkg.info <- paste("KnitR version", pkg.version, "of", pkg.date, sep=" ")
+# cpu <- system(paste("cat /proc/cpuinfo | grep 'model name' |", "head -n 1 | cut -d':' -f2", sep=" "), intern=TRUE)
+# ram <- as.numeric(system("dmesg |grep Memory:|cut -d 'k' -f1 |awk '{print$2}'", intern=TRUE))
+# ram <- paste0(round(as.integer(ram)/1e6, 1), "GB")
+user <- Sys.getenv("LOGNAME")
+node <- Sys.info()[["nodename"]]
+user.node <- paste0(user, "```", node)
+#os <- system("lsb_release -d | cut -d: -f2 | sed 's/^[ \t]*//'", intern=TRUE)
+os <- paste(as.character(Sys.info()[1]), paste(strsplit(R.Version()$arch, "_")[[1]][1], "_", strsplit(R.Version()$arch, "_")[[1]][2], sep = ""), sep = " ")
+rlse <- paste(strsplit(Sys.info()[2], "_")[[1]][1], "_", strsplit(Sys.info()[2], "_")[[1]][2], sep = "")
+# syst.specs <-paste(user.node, "running", os, "with", cpu, "and", ram, "of RAM.", sep=" ")
+syst.specs <-paste(user.node, "running", os, "release", paste0(rlse, "."), sep=" ")
+
+```
+*This document was processed by `r pkg.info` on `r R.version[13]`. It was generated by `r syst.specs`*

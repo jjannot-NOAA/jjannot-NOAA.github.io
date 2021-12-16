@@ -1,0 +1,46 @@
+---
+title: "A-SHOP Pacific halibut bycatch estimates"
+author: "Jason Jannot"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warnings=FALSE, results='hide'}
+knitr::opts_chunk$set( echo = FALSE,
+                       warnings = FALSE,
+                       message = FALSE,
+                       include = TRUE)
+```
+The A-SHOP catch data are produced annually during the normal data processing by the GM report analyst (as of `r Sys.Date()`, K. Somers, FOS/FRAM/NWFSC).  They are already processed and ready to report. This code prepares and runs the R code for P. halibut mortality in At-sea Hake sectors. The GM Analyst feeds the ASHOP PHLB data to the PHLB author during the Data Processing phase early in the year.  The PHLB author does some minimal processing to make the ASHOP data "pretty" for printing. Also, PHLB author requests new ASHOP PHLB lengths from Vanessa Tuttle. Specifically, it produces the data for the following tables:    
+
+    1. Table - Catcher Processor - coverage, observed sets, % sets with PHLB, and bycatch estimates of P. halibut.    
+    2. Table - Catcher Vessels delivering to Motherships - coverage, observed sets, % sets with PHLB, and bycatch estimates of P. halibut.    
+    3. Table - Tribal - coverage, observed sets, % sets with PHLB, and bycatch estimates of P. halibut.    
+    4. Table - Length frequencies for At-sea hake collected P. halibut.    
+    5. Estimates and errors for Figure in executive summary.
+
+# `ASHOP_PHLB_function.R`
+
+```{r}
+
+ASHOP_Hist <- data.frame(Mod.Year = c(2013, 2015, 2016, 2017, 2018, 2019, rep(2020, 2)),
+                          Month        = c(rep("July", 2), "June",
+                                           rep("July", 2),
+                                           rep("June", 2), "July"),
+                          Modification = c("Original reporting, no code.",
+                                           "Create separate ASHOP table - R code developed.  Add length frequencies as per IPHC request.", 
+                                           "Add 2015 data.",
+                                           "Add 2016 data. Separate tribal from non-tribal into different tables.",
+                                           "Add 2017 data.",
+                                           "Add 2018 data.",
+                                           "Add 2019 data.",
+                                           "Functionalize for package."),
+           Author           = c(rep("J. Jannot", 8)),
+           Affiliation      = c(rep("NOAA", 8)),
+           stringsAsFactors = FALSE)
+
+knitr::kable( ASHOP_Hist,
+      booktabs = TRUE,
+      caption  = "History of the `ASHOP_PHLB_function.R` code, 2013-present.")
+
+```

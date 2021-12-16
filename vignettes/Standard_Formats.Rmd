@@ -1,0 +1,58 @@
+---
+title: "Standard Formats"
+author: "Jason Jannot"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+nptch    <- "north of Pt. Chehalis, WA"
+ptch4010 <- "Pt. Chehalis, WA to 40 deg. 10 min. N. lat."
+n4010    <- "north of 40 deg. 10 min. N. lat."
+sptch    <- "south of Pt. Chehalis, WA"
+s4010    <- "south of 40 deg. 10 min. N. lat."
+cw       <- "coastwide"
+
+```
+
+# Standard Formats
+These are standardized formats for the Pacific halibut report.
+
+## Character Fields
+
+These fields will be created using the `stratify_4phlb` function.  They are standardedized for printing on output.
+
+* `state` 
+  * WA
+  * OR
+  * CA
+  * WA,CA,OR
+* `area`
+  * north of Pt. Cheahlis, WA
+  * north of 40 deg. 10 min. N. lat.
+  * Pt. Chehalis, WA to 40 deg. 10 min. N. lat.
+  * south of 40 deg. 10 min. N. lat.    
+  * coastwide
+* `depth`
+  * 0-60
+  * >60
+  * all depths
+* `gear`
+  * Bottom Trawl
+  * Midwater Trawl
+  * Hook & Line
+  * Pot
+  
+## Order of Fields
+On output the order of the stratification fields should be as follows:    
+* `fishery state year sector gear area depth`
+* ` hauls trips vessels`
+
+##  Order of Rows
+Within a `fishery`, `sector` and `gear`, sort rows based on these fields in the following order:    
+`state` north (top) to south (bottom)
+`area` north (top) to south (bottom)
+`depth` shallow(top) to deep (bottom)
+`year` old (top) to new (bottom)

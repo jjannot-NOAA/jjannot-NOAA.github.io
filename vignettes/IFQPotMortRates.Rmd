@@ -1,0 +1,31 @@
+---
+title: "IFQ Pot Mortality Rates"
+author: "Jason Jannot"
+date: "6/18/2020"
+output: html_document
+---
+```{r eval=TRUE, echo=FALSE, message=FALSE, warnings=FALSE, results='hide'}
+knitr::opts_chunk$set( echo = FALSE,
+                       warnings = FALSE,
+                       message = FALSE,
+                       include = TRUE)
+```
+```{r potIFQmortrates, eval=TRUE, echo=FALSE, results='asis'}
+potmortrates <- read.csv(file = paste0(drive,"data/AF_IFQ_Pot_MortRates.csv"),
+                        header = TRUE, stringsAsFactors = FALSE)%>%
+                 slice(2:nrow(.))%>%
+                 setNames(., nm = slice(., 1))%>%
+                 slice(2:nrow(.))%>%
+                 mutate(Mortality_Rate = sprintf("%.2f", as.numeric(Mortality_Rate)),
+                        Sector = "Catch Shares")%>%
+                 dplyr::select(Sector, Gear, everything())%>%
+                 qdf()
+
+flxtbl_fxn(potmortrates, hdrs = list(Sector = "Catch Shares", 
+                                     Gear = "Gear",
+                                      Viability = "Viability",
+                                      Mortality_Rate = "Mortality Rate")) %>%
+            flextable::merge_v(., j = "Sector")%>%
+            flextable::merge_v(., j = "Gear")%>%
+            flextable::autofit()
+```

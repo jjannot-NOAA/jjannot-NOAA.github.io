@@ -1,0 +1,49 @@
+---
+title: "PHLB Tech Memo Documentation"
+author: "Jason Jannot"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+%```{r setup, include = F, code = readLines("~/observer/Input/PHLB/PHLB Report Code Version Control/Intro2.R"), echo=FALSE, eval=TRUE>}
+data.year =  as.numeric(substr(Sys.Date(), 1,4)) - 1
+%```
+# Acronyms
+TM = NOAA Technical Memorandum
+
+# Parts of the Tech Memo
+  1. Main Text - word document
+  2. Table Captions - csv
+  3. Alt Text - word doc
+  4. Figures - png
+  5. Tables - csv
+  
+  
+# How to make the PHLB Report into Tech Memo    
+    1. Create pdf of entire report for briefing book from `PHLB_Full_Report.Rnw` file.    
+    2. Submit pdf to DD for review.  Wait until obtain review before proceeding.    
+    3. Edit .Rnw based on feedback from DD and other reviewers.    
+    4. Create revised pdf of entire report from revised `PHLB_Full_Report.Rnw` file.    
+    5. Copy the preamble, title page, main text, figures, and appendicies from the `.tex` file.  Leave out all tables, except those tables embedded in the main text.    
+    6. Save as `PHLB_Tech_Memo_MS.tex` file inside `\TechMemo\pandoc\` folder.    
+    7. Add `.png` figues and `LatexPreamble.sty` to `TechMemo\pandoc\` folder.    
+    8. In Linux environment, use `pandoc` to convert `tex` to `odt` - yes open source document writer - NOT `docx` - it wont work.    
+    9. `jjannot$ pandoc -s PHLB_Tech_Memo_MS.tex -o PHLB_Tech_Memo_MS.odt`
+    10. Open `.odt` file with Word and save.
+    11. Fix any issues in Word document, including:
+        a. Delete large messed-up tables for insertion by Al.
+        b. Fix headers to small in-text tables which are easy fixes.
+        c. Fix hyperlinks
+            i. Alt + F9
+            ii. Ctl + H
+            iii. Alt + D - find "^d HYPERLINK"
+            iv. change links to blue text
+            v. Alt + F9 to leave hyperlinks
+        d. Ensure table #'s are correct for in-text tables.
+        e. Replace labels with table numbers.
+    12. Save Main Text, Table Captions, Alt Text, Figures, Tables, and Photo to GDrive for sharing with Al Brown.    
+    13. Submit the original completed Word Output with few tables and figures embedded, all others as `csv`'s.  
+
+# 2019 TM (data.year = 2018)
+## Tables
+TM specific tables are created within each piece of code with a name that is appended with something like `_4TM.csv` and they are saved in the `TechMemo` folder within each data.year.

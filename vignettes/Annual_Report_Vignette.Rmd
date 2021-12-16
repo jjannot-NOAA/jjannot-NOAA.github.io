@@ -1,0 +1,222 @@
+---
+title: "Creating Annual P. halibut Bycatch Estimates with phlbbycatcher"
+author: "Jason E. Jannot"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: 2
+vignette: |
+  %\VignetteIndexEntry{Creating Annual P. halibut Bycatch Estimates with phlbbycatcher} %\VignetteEngine{knitr::rmarkdown} %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, eval=TRUE, echo=FALSE, message=FALSE, warnings=FALSE, results='hide', include=TRUE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+This is an in-depth review and discussion of **phlbycatcher**. If you simply want to run the code to produce the report, see the article "Getting started with phlbbycatcher".
+
+### Acronyms Used in this Document
+**A-SHOP** - At-Sea Hake Observer Program  
+**CCC**    - Catch Category Code  
+`data.year` - The most recent year of available observer and FT data, usually equal to the current year minus 1.</br>
+note: wherever you see `<<data.year>>` referenced in this document, replace that with the actual value of the current data year, e.g., 2017 or whatever.</br>  
+**EM**     - Electronic Monitoring  
+**FOS**    - Fisheries Observation Science, a.k.a., NWFSC Observer Program, a program within the FRAM Division. FOS includes both the A-SHOP and WCGOP observer programs.  
+**FRAM**   - Fishery Resource Analysis and Monitoring, a Division of NWFSC
+**FT**     - Fish Tickets, usually in reference to a data set    
+**IPHC**   - International Pacific Halibut Commission    
+**LBK**    - Logbook  
+**NWFSC**  - Northwest Fisheries Science Center  
+**OB**     - Observer, usually in reference to a data set    
+**PHLB**   - Pacific halibut   
+**PSMFC**  - Pacific States Marine Fisheries Commission  
+**TM**     - short for `Tech Memo` in reference to NOAA Technical Memorandum    
+**WCGOP**  - West Coast Groundfish Observer Program  
+**WRO**    - NOAA Western Regional Office
+
+# Scope
+NWFSC FOS estimates Pacific halibut (*Hippoglossus stenolepis*) bycatch for Federal fisheries that carry observers, electronic monitoring equipment, or both. In additions, PHLB bycatch is also estimated for state-managed fisheries that carry observers.
+
+# Background
+Estimates of Pacific halibut bycatch mortality in U.S. west coast fisheries is provided each August to the PFMC (for September Breifing Book) and in October to the International Pacific Halibut Commission (IPHC). NWFSC Observer Program data from any particular year are typically not fully QAQC'd and finalized for use in analysis until late spring of the following year. Thus, the annual P. halibut mortality report only presents data thru 31st December of the previous year (e.g., the 2020 report would have data thru 2019).
+
+# Introduction
+Creating estimates of Pacific halibut bycatch mortality in U.S. west coast fisheries can be a daunting task for several reasons. First, there are multiple fisheries, many of which use various aspects of the data in different ways, such that a single "method" for all fisheries does not exist. For example, some, but not all, fisheries apply a mortality rate based on scientific studies of P. halibut fishing mortality. Second, the timeline from obtaining analytical quality data - usually sometime in early May each year - until the report must be submitted to the PFMC briefing book (usually August each year) is quite short, and must take into account several rounds of reviews before submission (co-authors, FOS Program Manager, NWFSC Fishery Resource Analysis Monitoring [FRAM] Division Director).  Finally, the outputs, especially the tables, are quite complex and must meet the needs of multiple stakeholders and users (e.g., PFMC, IPHC, WRO).
+
+The **phlbbycatcher** package aims to simplify the analysis and reporting of P. halibut bycatch mortality to the PFMC and other stakeholders.  Specifically, the package breaks the process down into the following steps:
+
+ 1. Stratify the data.  Not all fisheries are stratified in the same manner.
+ 2. Create observer coverage tables, stratified in the same manner as step 1 above.  This step also tests for and masks confidential strata.
+ 3. Estimate P. halibut bycatch mortality.
+ 4. Format the output, masking confidential data when necessary.
+ 
+ This document introduces **phlbbycatcher**'s basic functions and shows how to apply them to U.S. west coast fisheries data from a variety of sources. In addition to the philosophy outlined above, the organization and underlying functions incorporates the design philosophy of the [`tidyverse`](https://www.tidyverse.org/) to the greatest extent possible.
+
+<!-- THIS IS POTENTIALLY INCOMPLETE -->
+
+# Network Set-up {#Network}
+1. Create new folders for `data.year` in 
+    * `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/`
+    * `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/analyst_data/`
+    * `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/Inseason/`
+    * `/nwctantalus.nmfs.local/observer/Output/Pacific Halibut <<data.year>>/`
+2. Add data from requests (see below) to:
+    * `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/`
+
+## File Paths
+File paths for the annual report are determined by the environment in which R is being run (local machine vs. `tantalus` server) which is identified in `Setup.Rmd` (or `Inseason_Setup.Rmd`). Drives should be created appropriately for both `tantalus` as well as your local machine. For more details, see [Setup.Rmd](#Setup.Rmd).
+
+# Data
+The phlbbycatcher package requires very specific fishery data sets for input purposes.
+Data needed for producing annual estimates comes from three sources depending on the fishery:    
+    1. Catch Shares data comes from the NWFSC Observer Program via two separate sources:
+    (a) P. halibut biosamples collected by observers and housed in the WCGOP database
+    (b) P. halibut biosamples collected by EM and housed in the PFMSC database and contains the P. halibut lengths, weights, and discard mortality estimated from the PSMFC Time-on-Deck model.    
+    2. Non-Catch Shares data (i.e., Federal and state-managed fisheries) is collected by observers and housed in the WCGOP database.    
+    3. Fish ticket data comes from PSMFC and is processed and housed by FOS.    
+    4. At-sea Hake data comes from the observer data collected by A-SHOP and housed in the NORPAC database (NORPAC will eventually be transferred to NWFSC).    
+
+## Raw Data Sources
+ 1. The FOS Analyst Team will prepare some data sets. You can obtain the following data sets from the `load_data_modified()` function:    
+ * `OBOrig_Pre`,`OBOrig_Proc`    
+ * `SPC`    
+ * `FTOrig_Pre`, `FTOrig_Proc`    
+ * `ASOrig_Proc`    
+ * `EMOrig_Pre`, `EMOrig_Proc`    
+ The `most_recent_load_data_fxn()` will create the `load_data_modified()` for the most recent set of data. See `?most_recent_load_data_fxn()` and `?load_data_modified()` for more information.    
+ 2. Request WCGOP P. halibut Biosamples data from FOS Data Team (currently James Fellows).    
+ 3. Request At-Sea Hake PHLB Length data from A-SHOP (currently V. Tuttle).    
+ 4. Ensure that P. halibut length and time-on-deck data from the EM Program has been requested from PSMFC.  Typically, this is included in an annual request from the FOS Analyst team.
+ 
+ Data from requesters will be placed in:    
+ `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/`    
+
+## Data within **phlbbycatcher**
+Data are housed in the `/data/` folder in **phlbbycatcher**. Files that are in this folder are used every year and are (relatively speaking) very static.  Files that change each year are housed in the sub-folder `/data/<<data.year>>/`.
+
+`Annual_Data.R` reads the raw data from the above location and then repackages it as `.Rda` file and then saves it in:    
+`/nwctantalus.nmfs.local/observer/Output/Pacific Halibut <<data.year>>/`
+
+### Static Data Files in `/data/`
+These are the relatively static files that are housed in the top-level `/data/` folder and used each year for various reporting purposes
+
+| File Name | Data |
+|:----------:|:----:|
+| AE_IFQ_Btwl_MortRates.csv | A formatted table of the mortality rates used in CS bottom trawl. Used in the annual TM. |
+| AF_IFQ_Pot_MortRates.csv | A formatted table of the mortality rates used in CS pot. Used in the annual TM.|
+| AG_IFQ_HKL_MortRates.csv | A formatted table of the mortality rates used in CS hook & line. Used in the annual TM.|
+| IPHC_length_weight_conversion_table | Converts phlb length to weight. |
+| LE_Pri_Visual_LFs_from_Eliza_McVeigh.Rda | Visual estimates of lengths from NCS fisheries collected 2008-09 and entered into this spreadsheet by Eliza Heery and J. McVeigh.  These have now been entered into the WCGOP database and are no longer used, but kept as backup here.  |
+| LE_Primary_PHLB_VisualLengths_combinedBins_0809.csv | Similar to above, but LFs are binned. |
+| LETWL_0210_ExecSummary_Formatted.Rda | LE Bottom Trawl 2002-10 PHLB discards and mortality estimates formatted for the tables in the Executive Summary and other summary tables in the final report. These estimates are *not* recalculated each year, but rather simply treated as static and the same values reported each year.|
+|LF_Prim_Sable_0809_Length_Freq_with_Gear_sector.Rda | Same as above with gear and sector added. |
+|LETWL_0210_GEMM.Rda | Same as above except formatted for the annual GEMM product. |
+|:----------:|:----:|
+
+Note that the strange letters at the start of file names (e.g., "AE_...") *are required*. Eventually all the tables that go into the final set of MSExcel tables published with the report are numbered, based on their *alphabetical order* prior to being added to the MSExcel workbook.  The letters at the start of the file name ensure that the table gets the proper number in the spreadsheet so that it matches the number in the TM report text.
+
+### Annual Data Files in `/data/<<data.year>>/`
+#### `/data/<<data.year>>/calcs/`
+These files are data that will either be used to create a table, a figure, or are an intermediate step/data.frame needed to create another data set. Data files will be created and populate this folder when various `.Rmd` and `.R` scripts are run.
+
+#### `/data/<<data.year>>/Inseason/`
+Houses data for IPHC in-season reporting.  See the `Inseason_Vignette` for more information.
+
+### Data File Names
+After receiving data from the various sources, files should be saved (to `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/` as noted above) **with very specific names** so as to increase chances of a friction-less load process. Data files are called from `/scripts/AnnualData.R` which is `source()`ed in `000_Setup.R`. Specifically, file names should be exactly as shown below:
+
+| File Name | Data |
+|:----------:|:----:|
+| PHLB_Bios_Specimen_2002_<<data.year>>.Rda | P.halibut biospecimens for all sectors. |
+| OB_Catch| WCGOP catch data |
+| PSMFC_EM_Halibut_Lengths[^1] | EM data from PSMFC |
+| ASHOP_02<data.year - 2000>_PHLBcatch_<aslengthdate>.csv[^2]| At-sea Hake data |
+| A-SHOP_Phal_lengths_<aslengthdate>.csv | At-sea P. halibut length data |
+|:----------:|:----:|
+
+[^1]: File names for these data sets must contain these phrases exactly, but can also include other information, e.g., the date etc.
+[^2]: `aslengthdate` is a date of the format <mmddyy> that is appended to the end of the file name by the A-SHOP data manager (V. Tuttle) at the time of data retrieval. The `aslengthdate` object lives in ``/scripts/Dates.R`.  Be sure to update it each year.
+
+***
+# 000_Setup.Rmd {#Setup.Rmd}
+*This is probably the single most important script in the package.  Getting things right in this script will ensure a smooth run.*    
+This script creates the set-up environments necessary for the running of the remainder of the code.  If problems arise, check here first.
+
+### Define Logicals to Set up conditions for running code
+`draft` - If this is a draft run, set `draft <- TRUE`.    
+
+`newyear ` - If the WCGOP PHLB biosamples have **not** been saved as an `.Rda` file for the current year, then set `newyear <- TRUE`.    
+
+`load_Analyst_data` - If you need to pull in and save the `OB-FT-EM` data sets with the correct utf-8 encodings (e.g., running locally, not on `tantalus`) then set `load_Analyst_data <- TRUE`  - note that this can be a very long process.    
+
+`runstrata` - If you need to run the `stratify_4phlb()` within *every* script (i.e., the first run of the new `<<data.year>>`) set `runstrata <- TRUE`. Typically, you only need to run the `stratify_4phlb()` function once for each sector because the stratified data is then saved and when `runstrata <- FALSE` the saved, stratified data is loaded into the environment. Note that `runstrata` switch can be controlled within each specific script as well if needed, e.g, for de-bugging and/or re-running the stratification for only particular scripts.
+
+### Define Location and Time Specific Constants
+`tant_drive` - Define the drive where `tantalus` is located, e.g.: `tant_drive <- "V:/"`. Note that, "V:/" is J. Jannot's drive letter for `tantalus` - *change this letter to match your own drive letter* for `tantalus`.    
+
+`dv_load` - Define the drive where `OB-FT-EM` data will be loaded from: `dv_load <- paste0(tant_drive, "Input/")`.  Note that the `tant_drive` must be defined before `dv_load`. The `dv_load` object is used anywhere `load_modified_data(..., drive.load = dv_load)` is used (e.g., `/scripts/AnnualData.R`), as well as inside some functions.   
+
+`data.year`- Define the data year, e.g.: `data.year <- 2020` - the last year of data available in the WCGOP data sets.    
+
+
+### Define Global Options
+`scipen` - Define the `scipen` option = 999, to prevent scientific notation from kicking in.    
+
+`knitr` - Load the `knitr` library because you need that to do everything else.
+
+### Define File Paths
+All paths are designed to be relative to the root using the `rprojroot` library (which is similar to the `here` library).  These paths are defined based on if you are working locally, or on `tantalus` and, provided `tant_drive` is defined correctly for your machine (see above) and you have cloned the `phlbbycatcher` repository, should work regardless of your work space.  If you have issues finding a folder, it might be because you forgot to create that folder (see [Network Set-up](#Network Set-up)).
+
+### Load Libraries
+Loads the libraries in the `/scripts/Libraries.R` file.  Does not check for missing libraries or updates.
+
+### Load Constants
+`/scripts/Dates.R` loads date constants. You will need to update the following dates each year: `aslengthdate`,  `cscovdte`, `emcovdte`, `ncscovdte`.  These dates are used in the names of the auto-loaded files for the A-SHOP PHLB lengths, CS Coverage, EM Coverage, and NCS Coverage files respectively.    
+
+`scripts/Constants.R` loads a number of constants, including sector, gear, area, and length bin constants. Add any new constants here.
+
+`/scripts/Knitr_LaTeX_Options.R` contains `knitr` and `LaTeX` options. Should not need to change.
+  
+`/scripts/Plotting_Options.R` contains custom `ggplot` themes.
+
+### Load **phlbycatcher** Functions
+Uses `source(..., local = .GlobalEnv)` to load the functions in `/R/`. All of `phlbycatcher`'s functions are housed in this folder.  Any functions under development are housed in `/R/not_ready/` and will **not** be loaded by this code.    
+
+### Load the `load_data_modified()` Function
+Uses the `most_recent_load_data_fxn()` to create the `load_data_modified()`.  This should represent the most recent set of FOS data and files.  Unfortunately, `load_data_modified()` loads the `OB.processing()` function produced by the FOS Analyst Team.  This version of the `OB.processing()` function throws an error because of a name clash with `dplyr`.  Therefore, I source my own version of the `OB.processing()` - `R/ob_processing_function.R` - which has the same name.
+
+### Create Caption Functions
+This creates caption functions for figures, tables, appendices and supplemental tables using the `captioner` package.
+
+***
+# .Rmd Files
+Most of the `*.Rmd` files in **phlbycatcher** have self-explanatory names.  The most important `*.Rmd` file, `000_Setup.Rmd` was described above. Below, I describe a few other important `*.Rmd` files.  For `*.Rmd` files not mentioned below, please refer to the specific files for greater understanding.
+
+Numbering of `*.Rmd` file names indicates the order in which they are run, such that 0000 runs first (i.e., is the controller `*.Rmd`), 000 runs second, 001 third, and so on.
+
+## `0000_PHLB_Full_Report.Rmd`
+The second most important `*.Rmd` after `000_Setup.Rmd`. This file controls the production of the report by calling on child `*.Rmd`'s and `*.R` scripts to process the data and create the report. This file also contains the front matter (e.g., title, authors, affiliations etc.).
+
+##`002_Table_1_Captions.Rmd` and `003_Table_2_Captions.Rmd`
+There are two sets of table captions. `002_Table_1` are table captions for tables that appear within the body of the report, whereas `003_Table_2` are table captions for tables that only appear in the supplemental tables housed in the MSExcel Workbook that accompanies the report. Table captions are numbered in the order presented in these two `.Rmd` files, such that the first table caption in `002_Table_1` will be numbered as `Table 1` and the first table caption in `003_Table_2` will be numbered as (# of captions in `002_Table_1`) + 1. So, if you wish to change the order of table numbering, simply switch the order of the appearance of captions in one of these two `.Rmd` files. The table captions are created by the `table_nums()` function created in `000_Setup.Rmd`.
+
+##`004_Figure_Captions.Rmd`
+Similar to the Table Caption `*.Rmd`'s, the figure captions are created by `figure_nums()` function which is created in `000_Setup.Rmd` and the order of the figure captions list determines the order of the figure caption numbers.
+
+***
+See the Articles section of the **phlbbycatcher** website for discussions not covered in this article.
+
+***
+```{r outro, include=FALSE}
+pkg <- "knitr"
+pkg.version <- installed.packages()[pkg, 'Version']
+
+pkg.info <- paste("`knitr` version", pkg.version, sep=" ")
+Rver <- paste(R.Version()$version.string, " x", strsplit(R.Version()$arch, "_")[[1]][2], sep = "")
+os <- paste(as.character(Sys.info()[1:2]), collapse = " ")
+```
+This document was processed by `r pkg.info` using `r Rver` on a `r os` machine. 
+

@@ -1,0 +1,33 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# Overview
+
+<!-- badges: start -->
+<!-- badges: end -->
+The goal of `phlbbycatcher` is to provide estimates of Pacific halibut (*Hippoglossus stenolepis*) bycatch mortality in U.S. west coast fisheries (WA, OR, CA). These bycatch estimates are presented each August to the PFMC (for September Breifing Book) and in October (afer September PFMC Meeting) to the International Pacific Halibut Commission (IPHC). NWFSC Observer Program data from any particular year are typically not fully QAQC'd and finalized for use in analysis until late spring of the following year. Thus, the annual P. halibut mortality report only presents data thru 31st December of the previous year (e.g., the 2020 report would have data thru 2019).
+
+# Scope
+We currently provide estimates for Federal fisheries that carry observers, electronic monitoring equipment, or both. We also provide estimates for state-managed fisheries that carry observers.
+
+
+## Installation
+
+You can install the development version of phlbbycatcher from [GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("jjannot-NOAA/phlbbycatchr")
+```

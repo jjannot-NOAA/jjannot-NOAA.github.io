@@ -1,0 +1,121 @@
+---
+title: "phlbbycatcher"
+output: rmarkdown::html_vignette
+toc:
+  depth: 1
+vignette: >
+  %\VignetteIndexEntry{phlbbycatcher}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(phlbbycatcher)
+```
+# Introduction
+This is a quick start guide and, as such, is only intended to give the minimal instructions necessary to complete the annual reporting. For more in-depth discussion of annual reporting, please see: "Creating Annual P. halibut Bycatch Estimates with **phlbbycatcher**".
+
+The **phlbbycatcher** package aims to simplify the analysis and reporting of P. halibut bycatch mortality to the PFMC and other stakeholders.  Specifically, the package breaks the process down into the following steps:
+
+ 1. Stratify the data.  Not all fisheries are stratified in the same manner.
+ 2. Create observer coverage tables, stratified in the same manner as step 1 above.  This step also tests for and masks confidential strata.
+ 3. Estimate P. halibut bycatch mortality.
+ 4. Format output, masking confidential data when necessary.
+ 
+ This document introduces you to **phlbbycatcher**'s basic functions and shows how to apply them to U.S. west coast fisheries data from a variety of sources. The organization and underlying functions incorporates the design philosophy of the [`tidyverse`](https://www.tidyverse.org/) to the greatest extent possible.
+
+# 1. Set up Network Folders
+1. Create new folders for `data.year` in 
+    * `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/`
+    * `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/analyst_data/`
+    * `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/Inseason/`
+    * `/nwctantalus.nmfs.local/observer/Output/Pacific Halibut <<data.year>>/`
+2. Add data from requests (see below) to:
+    * `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/`
+
+## File Paths
+File paths should be "auto-magically" created and should not need to be set by the analyst, *except* for `tant_drive` (see [4. Update `000_Setup.Rmd`]{#Setup} below).  The file paths for the annual report are determined by the environment in which R is being run (local machine vs. `tantalus` server) which is identified in `000_Setup.Rmd` (or `Inseason_Setup.Rmd`). Drives should be created appropriately for both `tantalus` as well as your local machine. For more details, see "Creating Annual P. halibut Bycatch Estimates with **phlbbycatcher**".
+    
+# 2. Obtain Required Data Inputs
+Ensure you have the following inputs:    
+
+1. FOS data, obtained  from the `load_data_modified()` function:    
+ * `OBOrig_Pre`,`OBOrig_Proc`    
+ * `SPC`    
+ * `FTOrig_Pre`, `FTOrig_Proc`    
+ * `ASOrig_Proc`    
+ * `EMOrig_Pre`, `EMOrig_Proc`    
+ 
+ 2. WCGOP PHLB Biosamples data from FOS Data Team (currently James Fellows).    
+ 3. A-SHOP PHLB Length data from A-SHOP (currently V. Tuttle).    
+ 
+ 4. EM PHLB length and time-on-deck data from from PSMFC.  Typically, this is included in an annual request from the FOS Analyst team, and can usually be found here: 
+ 
+ <!-- FIX THIS -->
+ `/FRAM/Observer/observer/..........`    
+ 
+ Place all data from above in:    
+ `/nwctantalus.nmfs.local/observer/Input/PHLB/<<data.year>>/`    
+
+ `Annual_Data.R` reads the raw data from the above location and then repackages it as `.Rda` file and then saves it in:    
+ `/nwctantalus.nmfs.local/observer/Output/Pacific Halibut <<data.year>>/`
+
+# 3. Update Dates
+Update the following dates in `scripts/Dates.R`:    
+
+    * `aslengthdate`    
+    * `cscovdte`    
+    * `emcovdte`    
+    * `ncscovdte`    
+    
+The `aslengthdate` is the date in the filename of the A-SHOP P. halibut lengths.  The other names are dates in the filenames of the coverage products produced by the FOS analysts and found here:
+
+ <!-- FIX THIS -->
+ `/nwctantalus.nmfs.loca/observer/Output/Coverage/2002-<<data.year>>/`    
+ 
+
+# 4. Update `000_Setup.Rmd` {#Setup}
+* define the logicals that control how code is run    
+* define location and time specific constants (e.g, drives and data.year)    
+    - `tant_drive` - Define the drive where `tantalus` is located, e.g.: `tant_drive <- "V:/"`. Note that, "V:/" is J. Jannot's drive letter for `tantalus` - *change this letter to match your own drive letter* for `tantalus`.    
+    
+# 5. Knit `0000_PHLB_Report.Rmd`
+This script is the controller script which calls and implements all other `*.Rmd` and `*.R` scripts.
+
+# 6. Troubleshoot
+If non-obvious trouble arises, check `000_Setup.Rmd` for errors.
+
+***
+# After Knitting
+## 1. Check Report
+Ensure report text, tables, figures, references and appendices are correct.
+
+## 2. Check Supplementary Tables
+Ensure the MSExcel Workbook of Supplementary tables are correct, with captions, headers, and correct sheet numbering corresponding to table numbers.
+
+***
+
+# Reviewing & Submitting
+1. Send for reviews by co-authors.
+2. Send for review by IPHC.
+3. Submit, annually in August, to PFMC September Briefing Book. This can occur before recieving IPHC review.
+4. Submit to RPTS, with IPHC review as the Technical Review.  Add Craig Russell as Technical Reviewer.
+
+
+***
+```{r outro, include=FALSE}
+pkg <- "knitr"
+pkg.version <- installed.packages()[pkg, 'Version']
+
+pkg.info <- paste("`knitr` version", pkg.version, sep=" ")
+Rver <- paste(R.Version()$version.string, " x", strsplit(R.Version()$arch, "_")[[1]][2], sep = "")
+os <- paste(as.character(Sys.info()[1:2]), collapse = " ")
+```
+This document was processed by `r pkg.info` using `r Rver` on a `r os` machine. 

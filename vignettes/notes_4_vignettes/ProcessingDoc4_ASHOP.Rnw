@@ -1,0 +1,100 @@
+% <<setup, include = F, code = readLines("~/observer/Input/PHLB/PHLB Report Code Version Control/Intro2.R"), echo=FALSE, message=F, eval=TRUE>>=
+% @
+<<restResult, echo = F, message = F, eval = T>>=
+ opts_chunk$set( results      = "hide")
+@
+% --- BEGIN PREAMBLE ------------------------------------------------ %
+\documentclass{article}
+\usepackage{LatexPreamble}
+%Set graphics paths
+\graphicspath{{./observer/Output/Pacific Halibut/PHLB \Sexpr{data.year}/Figures/}{./observer/Output/Pacific Halibut/PHLB \Sexpr{data.year}/Images/}{./observer/Output/Pacific Halibut/PHLB \Sexpr{data.year}/Appendicies/}}
+% --- Title Matter --- %
+% comes before begin{document} because special font stylings are used
+% in the preamble to meet NOAA Tech Memo specifications
+\title{Processing: At-Sea Hake}
+% --- end title  --- %
+% --- END PREAMBLE -------------------------------------------------- %
+
+% --- Document   --- %
+\begin{document}
+\maketitle
+% Set base font as serif
+\fontfamily{crimson}\selectfont
+% return the text to 12 point font - otherwise you end up with 22 point font!
+\normalsize
+\fancyhf{}
+\pagestyle{plain}
+\section{At-Sea Hake}
+\FloatBarrier
+\begin{table}[!htbp]
+\caption{History of the At-sea Hake P. halibut Code}
+\begin{tabular}{p{2.5cm}p{9cm}p{2.5cm}p{1cm}}
+\textbf{Date} & \textbf{Modification} & \textbf{Analyst} & \textbf{Affiliation}\\
+\hline
+2013? & Original reporting. No R code. & J. Jannot & NOAA\\
+2015 July & Create separate ASHOP table - R code developed.  Add length frequencies as per IPHC request. & Jason Jannot & NOAA\\
+2016 June & Add 2015 data. & J Jannot & NOAA\\
+2017 July & Add 2016 data. Separate tribal from non-tribal into different tables. & J Jannot & NOAA\\
+2018 July & Add 2017 data. & J Jannot & NOAA\\
+2019 June & Add 2018 data. & J Jannot & NOAA\\
+2020 June & Add 2019 data. & J Jannot & NOAA\\
+\hline
+\end{tabular}
+\end{table}
+This code prepares and runs the R code for P. halibut mortality in At-sea Hake sectors. The GM Analyst feeds the ASHOP PHLB data to the PHLB author during the Data Processing phase early in the year.  The PHLB author does some minimal processing to make the ASHOP data "pretty" for printing. Also, PHLB author requests new ASHOP PHLB lengths from Vanessa Tuttle. Specifically, it produces the data for the following tables.
+\begin{enumerate}
+  \item Table - At-sea Pacific hake fishery coverage, observed sets, \% sets with PHLB, and bycatch estimates of P. halibut.
+  \item Table - Length frequencies for At-sea hake collected P. halibut.
+  \item Estimates and errors for Figure in executive summary.
+\end{enumerate} 
+
+<<ashop, code = readLines("~/observer/Input/PHLB/PHLB Report Code Version Control/ASHOP_PHLB.R")>>=
+@
+
+<<ashop_bycth, results='asis'>>=
+load(file=paste(drive2, "Tables/ASHOP_NOTribal_PHLBbycatch_Formatted.Rda", sep=""))
+end.row <- data.year - 2001
+align(ashop.phlb.tabNOtribal)<- "lccrcc"
+print(ashop.phlb.tabNOtribal
+      , sanitize.colnames.function = function(x){x}
+      , sanitize.text.function     = function(x){x}
+      , add.to.row                 = list(pos = list(-1, 0, end.row, end.row*2)
+                                          , command = c("\\\\ \\multicolumn{5}{C{14cm}}{\\textbf{At-sea Pacific hake fishery}}\\\\"
+                                                        , "\\hline \\multicolumn{1}{L{3cm}}{\\textbf{Catcher-Processor}} \\\\"
+                                                        , "\\hline \\multicolumn{1}{L{3cm}}{\\textbf{Mothership Catcher Vessels}} \\\\"
+                                                        , "\\hline"))
+      , caption.placement = "top"
+      , include.rownames  = F)
+
+load(file=paste(drive2, "Tables/ASHOP_Tribal_PHLBbycatch_Formatted.Rda", sep=""))
+
+align(ashop.phlb.tabTribal)<- "lccrcc"
+print(ashop.phlb.tabTribal
+      , sanitize.colnames.function=function(x){x}
+      , sanitize.text.function=function(x){x}
+      , add.to.row=list(pos=list(-1, 0, 11)
+        , command=c("\\\\ \\multicolumn{5}{C{14cm}}{\\textbf{At-sea Pacific hake fishery}}\\\\"
+          , "\\hline \\multicolumn{1}{L{3cm}}{\\textbf{Tribal Sector}} \\\\"
+          , "\\hline"))
+      , caption.placement="top"
+      , include.rownames=F)
+
+@
+\FloatBarrier
+\pagestyle{fancy}
+<<ashop_lfs, results='asis'>>=
+load(file=,paste(drive2,'Tables/LengthFrequencies_Actual_ASHOP_Formatted.Rda',sep=''))
+align(ashop.lf.out) <- "ll|c|c|c|c|c|c"
+print(ashop.lf.out
+      , sanitize.colnames.function=function(x){x}
+      , sanitize.text.function=function(x){x}
+      , caption.placement="top"
+      , include.rownames=FALSE
+      , table.placement="!ht" )
+@
+\FloatBarrier
+Cleaning up
+% <<ashop_clean, code = readLines("~/observer/Input/PHLB/PHLB Report Code Version Control/Clean_Renvironment.R")>>==
+% @
+
+\end{document}

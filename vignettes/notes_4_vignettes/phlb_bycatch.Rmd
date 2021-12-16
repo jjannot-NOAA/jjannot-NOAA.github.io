@@ -1,0 +1,139 @@
+---
+title: "Getting Started with phlbbycatcher"
+author: "Jason E. Jannot"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with phlbbycatcher}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+# Introduction
+This is a quick start guide and, as such, is only intended to give the minimal instructions necessary to complete the annual reporting.
+
+The **phlbbycatcher** package aims to simplify the analysis and reporting of P. halibut bycatch mortality to the PFMC and other stakeholders.  Specifically, the package breaks the process down into the following steps:
+
+ 1. Stratify the data.  Not all fisheries are stratified in the same manner.
+ 2. Create observer coverage tables, stratified in the same manner as step 1 above.  This step also tests for and masks confidential strata.
+ 3. Estimate P. halibut bycatch mortality.
+ 4. Format output, masking confidential data when necessary.
+ 
+ This document introduces you to phlbbycatcher's basic functions and shows how to apply them to U.S. west coast fisheries data from a variety of sources. The organization and underlying functions incorporates the design philosophy of the [`tidyverse`](https://www.tidyverse.org/) to the greatest extent possible.
+
+# Network Set-up
+1. Create new folder for data.year in 
+    * `~/observer/Input/PHLB/<<data.year>>/`
+    * `~/observer/Output/Pacific Halibut <<data.year>>/`
+2. Add data from requests (see below) to:
+    * `~/observer/Input/PHLB/<<data.year>>/`
+    
+# Required Inputs
+Ensure you have the following inputs:
+ 1. FOS data, obtained  from the `load_data_modified()` function:    
+ * `OBOrig_Pre`,`OBOrig_Proc`    
+ * `SPC`    
+ * `FTOrig_Pre`, `FTOrig_Proc`    
+ * `ASOrig_Proc`    
+ * `EMOrig_Pre`, `EMOrig_Proc`    
+ 2. WCGOP PHLB Biosamples data from FOS Data Team (currently James Fellows).    
+ 3. A-SHOP PHLB Length data from A-SHOP (currently V. Tuttle).    
+ 4. EM PHLB length and time-on-deck data from from PSMFC.  Typically, this is included in an annual request from the FOS Analyst team, and can usually be found here: 
+
+<!-- FIX THIS PATH to complete #4 above -->
+<!-- `FRAM/Observer/observer/` -->
+
+ `Annual_Data.R` reads the raw data from the above location and then repackages it as `.Rda` file and then saves it in:    
+ `~/observer/Output/Pacific Halibut <<data.year>>/`
+
+## Code Updates
+1. Update dates in `scripts/Dates.R`
+    * `aslengthdate`
+    * `cscovdte`, `emcovdte`, `ncscovdte`
+
+<!-- Specifically (as a quick reference): -->
+<!-- 1. Request WCGOP data from FOS Database manager (currently James Fellows) -->
+<!-- 2. Request At-Sea Hake PHLB Length data from A-SHOP. -->
+<!-- 3. Update `/scripts/Dates.R/aslengthdate` object to match the date on the end of the A-SHOP data files that were provided by the A-SHOP data manager. -->
+<!-- 4. Ensure that P. halibut EM data has been requested. -->
+
+<!-- 8. Knit -->
+
+<!-- The remainder of this vingnette goes into more detail about each step, scripts, and functions. -->
+
+## Checking the Data
+Knit `Data_Checking.Rmd` which uses the function `check_phlb_data` to print out messages about the data.  This only checks the WCGOP BioSamples data.  Only needs to be run once per year.
+
+***
+
+# Stratifying the data
+ 
+To simplify things, in this document, the terms "stratify" and "stratification" refer to both stratification *sensu stricto* (i.e., add grouping/binning variables) as well as subsetting (i.e., filter rows by grouping variables).
+
+* `stratify_4phlb()` takes a fishery sector as an argument and stratifies it according to state, gear, area, depth. Also adds important meta-data to the output.  Relies on `subset_sector()` and `subset_gear()`. 
+
+## TODO - coverage example
+# Coverage Tables
+## `summarize_cs_coverage`
+
+# Bycatch Mortality Estimates
+## `complete_viabs`
+* located in helper_functions.R
+
+## `est_mort_viabs`
+## `est_mort_viabs_cs_hkl1119`
+## `estimate_unsampld_cs`
+## `estimate_ashop_phlb`
+
+
+# Formatting Output
+
+## `format_table_csv`
+## `mask_conf_data`
+## `prep_exec_sumry`
+## `prep_viabs`
+## `sort_phlbtables`
+## `test_conf`
+
+# Auxilliary and Helper Functions
+## Auxilliary Functions
+These functions pre-date the development of phlbbycatcher and are part of the typical NWFSC FOS Analyst workflow.  Currently (`r Sys.Date`) they are housed here because the main functions use these functions.  Eventually, they will be moved to a separate TBD package.
+
+###`get.sector`
+###`OB.processing`
+###`FT.processing`
+###`gear.type`
+
+## Helper Functions
+Low level helper functions that are the work horse of phlbbycatcher main functions.
+
+### `add_meta`
+### `colord`
+### `chk_missing_nms`
+### `dots2char` 
+### `fix_ave_depth`
+### `flxtbl_fxn`
+### `format_cs_ratios`
+### `haul_dur`
+### `match_col_classes`
+### `neisna`
+### `order_cols_4phlb`
+### `qdf`
+### `qdr`
+### `rename_fxn`
+### `sort_phlbtables`
+### `stratify_area`
+### `stratify_depth`
+### `subset_partial_year` 
+### `subset_sector`
+### `subset_gear`
+
+
+# In-seasson Reporting
+ See:`Inseason_Vignette.Rmd`

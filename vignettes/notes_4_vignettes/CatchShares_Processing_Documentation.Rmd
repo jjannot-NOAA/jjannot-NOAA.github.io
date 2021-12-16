@@ -1,0 +1,104 @@
+---
+title: "Catch Shares Processing Documentation"
+author: "Jason Jannot"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warnings=FALSE, results='hide'}
+knitr::opts_chunk$set( echo = FALSE,
+                       warnings = FALSE,
+                       message = FALSE,
+                       include = TRUE)
+```
+The CatchShares.R code creates data for the following tables:    
+
+    1. Table - Coverage and sampling on Catch Shares vessels.     
+    2. Table - Estimates weight (mt) of Pacific halibut from each unsampled category in the U.S. west coast groundfish IFQ fishery.    
+    3. Table - Pacific halibut viabilities in the U.S. west coast groundfish IFQ fishery.    
+    4. Table - Estimated gross discard (mt) and discard mortality (mt) of Pacific halibut in the U.S. west coast groundfish IFQ fishery.    
+    5. Table - Estimated Pacific halibut discard (mt), discard mortality (mt), legal-sized (82 cm) mortality (mt) and percent of legal-sized discard by weight (mt) in the U.S. west coast groundfish IFQ fishery.     
+    6. Table - Pacific halibut bycatch by month for vessels fishing bottom trawl gear in the \Sexpr{data.year} IFQ fishery.    
+    7. Appendix E - NOTE: Appendix E is no longer included in the report.  These values are split by area-depth-correlated species.  They might be useful in future examination of changes in P. halibut mortality in the pre-CS vs. CS fishery.  Originally, these data first appeared in the 2013 report.    
+    8. Figure  - Estimates for Figure in Executive Summary.    
+    9. National Bycatch Report - Estimates for NBR with correct sectors, no CVs for CS.
+
+## Coverage
+The PHLB coverage tables will NOT match the annual coverage product. This is because in the PHLB report we report coverage for the purposes of expansion. This means that we consider Unsampled IFQ to be unsampled for PHLB.  Whereas the annual coverage product will consider a haul sampled if any effort was made to sample any species, so e.g., hauls with NIFQ as the only unsampled CCC will be included as sampled.
+
+For coverage, if a haul was sampled (DQ = 2) on a trip that wasn't failed (DQ = 2) but there was a failed haul (DQ==1) on that trip, we consider properly sampled hauls on that trip to be Analysis data.
+    
+NOTE: Historically (data years = 2010-2019), this code was stratified in two ways: with and without correlated species.  The "correlated species" code was removed July 2020.  If needed, see old code and git repository.
+
+## Expansions
+For a description of the types of unsampled hauls and how to expand them see CS Expansion Rules with Failed Data 2015-07-22.docx document which, as of 6 Aug 2015 lives here:    
+`Y:\Observer\observerData\Analysis_Library\Product Library\2014`
+
+# <tt>CatchShares.R</tt>
+
+```{r catchshares}
+CatchShares_Hist <- data.frame(Mod.Year = c( rep(2012, 3),
+                                             rep(2013, 2),
+                                             rep(2014, 6),
+                                             rep(2015, 4),
+                                             rep(2016, 2),
+                                             rep(2017, 1),
+                                             rep(2018, 3),
+                                             rep(2019, 1),
+                                             rep(2020, 2)),
+                          Month        = c(  "May", rep("Jun",2),
+                                             rep("July", 2),
+                                             "Jun", rep("July", 4), "Oct",
+                                             rep("Jun", 2), rep("Aug", 2),
+                                             "Jun", "Aug",
+                                             rep("Jun", 6),
+                                             "July"),
+                          Modification = c("Original coding",
+                            "First look was wrong data.This is the first look at new pull and a stab at the viability stuff. The data need to be pulled again because no FISHING_ACTIVITY_ID field (i.e., HAUL_ID) was included. Once the unsampled hauls are expanded, the amounts need to be added into the OB data set before use in viability.",
+                            "Need to use IPHC length-weight conversion table to estimate weights.",
+                            "First Run with 2002-2012 data. This is a mash-up code that includes code from `U:\WCGOP Reports\Pacific Halibut\textbackslash 2011 Report\CatchShares.r` (my external drive) AND `Y:\tobserverData\Analysis_Library\Product Library\2011\Bycatch Reports\Pacific Halibut\Catch_Shares_PHLB_Expansions_AWH120808.r` (`FRAM\observerData` Network space).",
+                            "Hopefully the final run.<\br> 1. Stratification: I have run this code using 2 different strata:<\br> a. year-sector-gear-depth-area-lbs.corr.spp.per.hr<\br> b. year-sector-gear-depth-area<\br> c. NOTES: 2 represents the strata used in the 2012 report. In 2013. I keep 2 as the 'reporting' strata.  I provide strata 1 in an appendix. Strata 1 was requested by the SSC in 2012. At this point, there appears to be a very small difference btwn the two strata. Strata 2 appears to give ~ 0.3 mt more discard over the entire two year period and all strata (i.e., summing across all strata, all years).<\br> 2. Other notes:<\br> a. Note that I have a kludgy fix for the CCC = `UNST`. Fix in 2014.<\br> b. Because of the use of strata 2 as the reporting strata, I did NOT create a haul-level version of the expansions using strata 1. I'm not certain it makes a huge difference anyway given the ~0.3 mt.",
+                            "Start coding for 2014.",
+                            "Incorporate Kayleigh's comments.",
+                            "Combine LE CA Halibut and Catch Shares. This also involves changing the strata.",
+                            "2012 LE CA Halibut and 2012 IFQ H\&L have to remain starred out because of confidentiality. If they are combined with other years or areas then someone could look at old report and compare to new report and figure out how much was caught in the confidential strata.  This would violate MSA and other confidentiality laws.  I need to change those years back to what they were.",
+                              "Fix the IFQ trawl monthly to include both the CS and the CS + LE CA Halibut sectors.",
+                            "FIX THE VIABILITIES- SHOULD BE USING IPHC CONVERSION TABLE which is round weights.",
+                            "1st run with 2014 data. Testing Intro.R source. 2014 CS H&L needs to be Coastwide as only 1 vess S4010. Code adapted as a knitR chunk for read_chunk incorporation into knitR documentation. Chunk name==`cs_phlb`",
+                            "Code adapted as a knitR source for incorporation into knitR documentation. Could not get `read_chunk` to play nice",
+                              "Include method for failed data.  Include Coastwide strata for POT because POT N Pt. Chehalis is confidential.",
+                            "IMPORTANT NOTE AND CHANGE: In 2011 and 2012, PHLB that was sampled in partially sampled hauls had to be separated.  This code still does that.  However, starting in 2013 and RETROACTIVELY, R. Shama and N. Riley made it so that any PHLB that was sampled in partially sampled hauls was included in sampled hauls.  I did not take this into account in the 2014 report.  Therefore in Table 5 of the 2014 report, the expanded and sampled columns do NOT add to the total.  I have temporarily fixed the code so that in the 2015 report, the expanded and sampled hauls DO add to the total.",
+                            "Added 2015 data. Zero LE CHLB trips in 2016. New sectors: Midwater Rockfish, Midwater Hake. In gear.type function, I assign gear, AVG\_LAT, \& AVG\_DEPTH to vessels where DATATYPE = Trip Without Catch according to K. Somers 2016 Sector Coverage code. Completely re-coded the coverage section, many objects deprecated.",
+                            "Removed SOME of the correlated species code and save it in \texttt{CorrSpecies\_Appdces.R}. This needs to be completed in 2017. Also streamlined the coverage code and reconciled the way unsampled CCCs are handled by debriefers with the estimation process.",
+                            "Added function to dynamically change `add.to.row$pos` option in latex tables.",
+                            "Add 2017 data.",
+                            "Moved the loading of viability data to Intro2.R. Pot is summarized coastwide for confidentiality.",
+                            "Fix viability tables",
+                            "Update for 2018 data.",
+                            "Update for 2019 data.",
+                            "Functionalize in prep for package creation."),
+           Author           = c(rep("J. Jannot", 11)),
+           Affiliation      = c(rep("NOAA", 11)),
+           stringsAsFactors = FALSE)
+
+knitr::kable(intro2RHist,
+      booktabs = TRUE,
+      caption  = "History of the`ChachShares.R` code, 2012-present.")
+
+```
+
+# TEMPLATE
+```{r}
+# 
+# TEMPLATE _Hist <- data.frame(Mod.Year     = 
+#                              Month        = 
+#                              Modification = 
+#                              Author       = 
+#                              Affiliation  = 
+#            stringsAsFactors = FALSE)
+# 
+# knitr::kable(intro2RHist,
+#       booktabs = TRUE,
+#       caption  = "History of the`TEMPLATE.R` code, 2014-present.")
+
+```

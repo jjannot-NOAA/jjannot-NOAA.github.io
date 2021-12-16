@@ -1,0 +1,166 @@
+---
+title: "Major Changes to PHLB Annaul Report"
+author: "Jason Jannot"
+date: "`r Sys.Date()`"
+output: html_document
+---
+%```{r setup, include = F, code = readLines("~/observer/Input/PHLB/PHLB Report Code Version Control/Intro2.R"), echo=FALSE, eval=TRUE>}
+data.year =  as.numeric(substr(Sys.Date(), 1,4)) - 1
+%```
+
+# 2020 Report (data.year = 2019)
+A. Develop into Rmarkdown Documents  
+    1. Processing Notes  
+        a. Each piece of `r` code.  
+        b. Major changes (this document)  
+        c. TODO lists  
+B. `CatchShares.R` *COMPLETED as of: 2020-06-01*    
+    1. Started re-write `z_CS_REWRITE.R` - as of `r Sys.Date()` incomplete
+    2. Deprecated `melt-decast` and recoded with `tidryR::pivot_wider`
+    3. Confidential strata    
+        a. IFQ Pot - combined areas coastwide    
+        b. IFQ trawl south of 4010 N. lat - starred out    
+        c. IFQ Midwater Hake - starred out
+        d. IFQ HKL - combined areas coastwide    
+C. `EFP_incl_CS_EM_code.R` *incomplete as of `r Sys.Date()`*    
+    1. Number of strata increased to accommodate confidential strata
+D. `Other Sectors` *COMPLETED as of: 2020-06-02*
+    
+# 2019 Report (data.year = 2018)
+## General
+A. Develop into Rmarkdown Documents  
+    1. Processing Notes  
+        a. Each piece of `r` code.  
+        b. Major changes (this document)  
+        c. TODO lists  
+B. All Sectors  
+    1. Changed `FT.processing` to `FTOrig_Proc` for all sectors.  This resulted in large changes in PS landings from previous reports.  However, now consistent with coverage product.    
+    2. Reformatted many of the tables using `kable()` and `kableExtra`
+C. Catch Shares    
+    1.IFQ Pot - combined areas coastwide due to confidentility    
+D. Non-Nearshore Fixed Gear    
+    1.Split percent trips, obs. catch stats, percent observed discard weight - separated into 3 tables.    
+    2. Changed LE DTL Pot denominator to GFR to match groundfish mortality report.
+E. Other Sectors    
+    1. Split OR and CA Nearshore into two tables
+    2. Re-named P. halibut derby to P. halibut directed fishery in final report.
+F. EM EFP    
+    1. Split Btwl, Midwater, and Pot into 3 separate tables
+    2. Fixed Btwl ToD model comparison to show each year's ToD value.
+    3. Fixed Btwl ToD model so that applies only to North of 4010.
+G. Notes    
+    1. Created a table (`Tables/ReporTableFilesLabelsDescrpt.csv`) showing the file and path for each table and the table-label (if known/exists) used in the LaTeX report and the Tech Memo `.csv`s.    
+H. PHLBFunctions    
+    1. Fixed the <tt>shortTab_fxn</tt> based on review by Ed Henry (IPHC). Re-ran length frequency code based on revised function.    
+I. Tech Memo, Processed Report, Data Report   
+    1. First draft submitted to Al Brown, 6 Nov 2019    
+    2. Processed Report - VAS in-season and special case IBQ calculations.  This was removed from the main report and published separately in 2020 (first draft to Al Brown, 6 Nov 2019).    
+    3. Data Report - The LE Bottom Trawl (2004-2010) and Catch Shares Bottom Trawl, Pot, and Shoreside Hake weighted length frequencies, percent weighted length frequencies, and dead PHLB by length bin published as a Data Report. Publish every 5 years or so.
+H. Percentage and Weighted Length Frequencies    
+  1. LE Trawl 2002-10 found as xls file.  Saved in `Tables` and `TechMemo` folders.
+  2. Developed into Data Report for previous years.
+
+```{r csvSources, include=TRUE, echo=FALSE, results='asis'}
+csvTableSrc <- data.frame(Report.Section = c(rep("Exec. Summary", 4)),
+                         Table.Description = c("Short ES mortality summary",
+                                               "Full ES mortality summary",
+                                               "IBQ by year",
+                                               "Percent legal mortality, bottom trawl N4010"),
+                         RCode = c(rep("ExecutiveSummary.R",3),
+                                   "CatchShares.R"),
+                         PathFile = c("`Tables/ShortES_Table_4TM.csv`",
+                                      "`Tables/SummaryTable4IPHC.csv`",
+                                      "`Tables/Executive_IBQ_Table_4_TechMemo.csv`",
+                                      "`CALCS/IFQ_Btrawl_percent_legal_mort.csv`"),
+                         stringsAsFactors = FALSE)
+knitr::kable(csvTableSrc,
+      booktabs = TRUE,
+      caption  = "The locations of PHLB tables in the final report, which piece of R code generates them, and where they are located in the `Output/Pacific Halibut/PHLB data.year/` directory")
+
+csvFigureSrc <- data.frame(Report.Section = c(rep("Exec. Summary", 1)),
+                         Figure.Description = c("Time series for mortality by sector"),
+                         RCode = c("ExecutiveSummary.R"),
+                         PathFile = c("`Figures/Exec_Summary_Figure.png`"),
+                         stringsAsFactors = FALSE)
+knitr::kable(csvFigureSrc,
+      booktabs = TRUE,
+      caption  = "The locations of PHLB figures in the final report, which piece of R code generates them, and where they are located in the `Output/Pacific Halibut/PHLB data.year/` directory.")
+```
+***
+<!-- MAJOR CHANGES FROM 2018 in LaTeX format.  No plans to convert into Rmd format.
+<!-- \section{2018 Report (data.year = 2017)} -->
+<!-- \begin{enumerate} -->
+<!--   \item General -->
+<!--     \begin{enumerate} -->
+<!--      \item Moved annual \textbf{Major Changes, Processing Notes}, \& \textbf{TODO List} into separate files.  These are then called using the LaTeX function \textit{input}. See the how to file: -->
+<!--      \wl -->
+<!--      \texttt{How2useTEXinput.pdf} -->
+<!--      % \item -->
+<!--     \end{enumerate} -->
+<!--   \item PHLBFunctions -->
+<!--     \begin{enumerate} -->
+<!--         \item New for \Sexpr{data.year} -->
+<!--         \item \texttt{phlb_lf_fxn} Function that processes PHLB LF data for table outputs. -->
+<!--         \item \texttt{splitTab_fxn} Function that splits a single long skinny continuous table into two shorter tables that are side-by-side, where the second table is a contiuation of the first.  Mainly used for LF tables.  -->
+<!--      \end{enumerate} -->
+
+<!--   \item Catch Shares - IFQ -->
+<!--     \begin{enumerate} -->
+<!--      \item Code update completed 2018-25-06 -->
+<!--       \item 2017 Pot is Coastwide for confidentiality -->
+<!--       \item Re-created viability tables using \texttt{kable} and separated by gear -->
+<!--     \end{enumerate} -->
+<!--   \item CS Weighted Length Frequencies -->
+<!--     \begin{enumerate} -->
+<!--         \item Replace all reshape with spread -->
+<!--         \item Revise and include CS Midwater RF - new in 2017 -->
+<!--      \end{enumerate} -->
+<!--   \item Non-Nearshore Fixed Gear -->
+<!--     \begin{enumerate} -->
+<!--     \item Code update completed 2018-27-06 -->
+<!--     \item Re-created mortality figure using \texttt{ggplot2} -->
+<!--     \end{enumerate} -->
+<!--   \item Length Frequency Code -->
+<!--     \begin{enumerate} -->
+<!--         \item Completely re-wrote code, incorporating PHLBFunctions. -->
+<!--         \item Asked Ryan Shama and Neil Riley to enter the 2008-09 visual LFs from Eliza/Jon into the DB. -->
+<!--          \item Processing Documentation for this code -->
+<!--           \begin{enumerate} -->
+<!--           \item Updated historical table and text 2018-19-06 -->
+<!--           \item Updated Figures and tables 2018-20-06 -->
+<!--           \item created LFRewrite\_ProcessingDoc.Rnw -->
+<!--           \end{enumerate} -->
+<!--        \end{enumerate} -->
+<!--   \item Other Sectors -->
+<!--       \begin{enumerate} -->
+<!--       \item Code update completed 2018-28-06 -->
+<!--       \item Re-created pink shrimp table using \texttt{kable} separated CA from WA \& OR -->
+<!--       \end{enumerate} -->
+<!--   \item PHLB Derby Fishery -->
+<!--       \begin{enumerate} -->
+<!--       \item New code based on non-nearshore fixed gear code -->
+<!--       \end{enumerate} -->
+<!--   \item Sea Cucumber Fishery -->
+<!--    \begin{enumerate} -->
+<!--       \item New code based on nearshore code -->
+<!--     \end{enumerate} -->
+<!--   \item CA Ridgeback Prawn Fishery -->
+<!--   \begin{enumerate} -->
+<!--       \item New code based on nearshore code -->
+<!--     \end{enumerate} -->
+<!--   \item Executive Summary Code -->
+<!--   \begin{enumerate} -->
+<!--       \item Added code to create the short ES summary table -->
+<!--       \item Added code for PHLB derby addition to mortality tables; Cukes and Prawn had zero catch, so added as footnote to mortality tables. -->
+<!--       \item Added code for PHLB derby to be added to GEMM.  No PHLB catch in Prawn and Cukes, therefore no GEMM entry as per KS email July 2018. -->
+<!--     \end{enumerate} -->
+<!--   \item Processing Documentation: I created a separate processing document (\texttt{ProcessingDoc4\_...tex}) for each major portion of code.  These will be stitched into a single processing document using the \texttt{input} command in \LaTeX. To accomplish this, \emph{leave out} the preamble, and \texttt{begin\textbackslash end document} commands in the input \texttt{.tex} files. -->
+<!-- %     \begin{enumerate} -->
+<!-- %         \item  -->
+<!-- %      \end{enumerate} -->
+
+<!-- %     \begin{enumerate} -->
+<!-- %         \item  -->
+<!-- %      \end{enumerate} -->
+<!-- \end{enumerate} -->
+<!-- \end{document} -->

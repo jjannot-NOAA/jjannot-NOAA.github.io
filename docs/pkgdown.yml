@@ -1,0 +1,20 @@
+pandoc: 2.14.0.3
+pkgdown: 1.6.1
+pkgdown_sha: ~
+articles:
+  Annual_Report_Vignette: Annual_Report_Vignette.html
+  HKL_MortRates: HKL_MortRates.html
+  IFQBtwlMortRates: IFQBtwlMortRates.html
+  IFQPotMortRates: IFQPotMortRates.html
+  Inseason_Vignette: Inseason_Vignette.html
+  notes_4_vignettes/ASHOP_Processing_Documentation: ASHOP_Processing_Documentation.html
+  notes_4_vignettes/CatchShares_Processing_Documentation: CatchShares_Processing_Documentation.html
+  notes_4_vignettes/Major_Changes: Major_Changes.html
+  notes_4_vignettes/Notes4Vignetts: Notes4Vignetts.html
+  notes_4_vignettes/phlb_bycatch: phlb_bycatch.html
+  notes_4_vignettes/PHLB_Processing: PHLB_Processing.html
+  notes_4_vignettes/TechMemo_Documentation: TechMemo_Documentation.html
+  phlbbycatcher: phlbbycatcher.html
+  Standard_Formats: Standard_Formats.html
+last_built: 2021-11-16T20:37Z
+

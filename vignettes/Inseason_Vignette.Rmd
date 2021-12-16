@@ -1,0 +1,107 @@
+---
+title: "Creating In-Season P. halibut Bycatch Estimates with phlbbycatcher"
+author: "Jason E. Jannot"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+vignette: |
+  %\VignetteIndexEntry{Creating In-Season P. halibut Bycatch Estimates with phlbbycatcher} %\VignetteEngine{knitr::rmarkdown} %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, eval=TRUE, echo=FALSE, message=FALSE, warnings=FALSE, results='hide', include=TRUE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+# Overview and Summary
+In brief, to create in-season estimates, users should only need to make some small changes to `Inseason_Data.Rmd` (described below) followed by knitting `Inseason_Reporting.Rmd`.
+
+Specifically (as a quick reference):
+
+1. Request EM data from PSMFC.  Negotiate the final in-season date.
+2. Obtain the `CatchToDate` estimate of P. halibut bycatch from the Vessel Account System (VAS) for the final in-season date.
+3. Request At-Sea Hake data from A-SHOP, matching final in-season date with EM data.
+4. Request Catch Shares data from WCGOP, matching final in-season date with EM & At-sea Hake.
+5. Save data in `\phlbbycatcher\data\<in-season year>\Inseason\` using appropriate file names (see below).
+6. Make sure that the most recent version of `load_data()` is being used in `Inseason_Setup.Rmd`.
+7. Update VAS and in-season date objects located in `Inseason_Data.Rmd`.
+8. Knit `Inseason_Reporting.Rmd`
+
+The remainder of this vingnette goes into more detail about each step, scripts, and functions.
+
+# Background
+In-season estimates of Pacific halibut (*Hippoglossus stenolepis*) bycatch mortality in *select* U.S. west coast fisheries is provided each October to the International Pacific Halibut Commission (IPHC). NWFSC Observer Program data from any particular year are typically not fully QAQC'd and finalized for use in analysis until late spring of the following year. Thus, the annual P. halibut mortality report only presents data thru 31st December of the previous year (e.g., the 2020 report would have data thru 2019).  However, IPHC needs more recent information to inform stock assessment and management goals. Thus, we need methods to estimate P. halibut bycatch mortality within the current year.
+
+# Scope
+We currently only provide in-season estimates for fisheries that are observed or monitored on 100% of trips, including: Catch Shares, Electronic Monitoring, and At-sea Hake fisheries.  Any fisheries observed less than 100% are not included in in-season estimates for a variety of reasons (e.g., fish tickets are not available; observer data has not been matched to fish tickets, etc.).
+
+# Data
+Data needed for producing in-season estimates comes from three sources depending the fishery:    
+
+1. Catch Shares data comes from the NWFSC Observer Program via two separate pulls from the Observer database: (a) in-season P. halibut biosamples and (b) in-season catch data.  
+    
+2. At-sea Hake data comes in the form of a single pull from the A-SHOP/Norpac database (this will eventually be transferred to NWFSC) that contains the in-season catch data.    
+    
+3. Electronic Monitoring data comes from the Pacific States Marine Fisheries Commission (PSMFC) which contains the P. halibut lengths, weights, and discard mortality estimated from the PSMFC Time-on-Deck model.
+
+Data are housed in a folder in the `phlbbycatcher` directory, specifically `\data\<inseason year>\Inseason\` where `<inseason year>` represents the year (numeric, YYYY) in which in-season estimates are being made, e.g., 2020.
+
+## Data File Names
+After receiving data from the various sources, files should be saved (to `\data\<inseason year>\Inseason\` of course) with particular names so as to increase chances of a friction-less load process. Specifically, file names should be exactly as shown below:
+
+| File Name | Data |
+|:----------:|:----:|
+| PHLB_Biospecimen_for_IPHC_inseason | Catch Shares P.halibut biospecimens |
+| OB_Catch_for_IPHC_inseason | Catch Shares catch data |
+| PSMFC_EM_Halibut_Lengths[^1] | EM data from PSMFC |
+| Phal_inseason_catch_A-SHOP^1^ | At-sea Hake data |
+
+[^1]: File names for these data sets must contain these phrases exactly, but can also include other information, e.g., the date etc.
+
+# Functions
+In-season functions in `phlbbycatcher` start with the prefix `insea_*` and include indicators of the type of data they accept (CS = Catch Share, EM = Electronic Monitoring, AS = At-sea Hake) as well as the type of output they produce (e.g., `_mort` = mortality estimates, `_viabs` = viabilities).  So, for example `insea_ashop_mort` estimates the in-season P. halibut bycatch mortality in the At-sea Hake fisheries. Catch Shares has two in-season functions; EM has three in-season functions and CS and EM share another function.  At-sea Hake has a single function.  Function documentation can be accessed via the usual `?` or `help()` functions.
+
+# Scripts
+There are three `.Rmd` scripts that are called from the main `Inseason_Reporting.Rmd` file (see below).  Scripts are housed in the `phlbbycatcher` directory under `\scripts\`.
+
+## `Inseason_Setup.Rmd`
+`Inseason_Setup.Rmd` loads libraries, `knitr` options, paths to drives, and loads the functions, as well as other static files necessary.  Users should not need to change anything within this script.
+
+## `Inseason_Data.Rmd`
+This script will require user intervention each year. `Inseason_Data.Rmd` loads the data from `\data\<inseason year>\Inseason\`. Loading is automated based on file names, so please be sure to follow file naming conventions listed above in `Data File Names` section.
+
+#### ! USER INTERVENTION REQUIRED !
+`Inseason_Data.Rmd` also *requires USER INTERVENTION*. Specifically, the in-season dates are housed in this script.  These dates will need to be changed each year. Date object definitions are as follows:
+
+| Date Object | Definition |
+|:-----------:|:---------:|
+| `inseayr`   | Year of in-season data |
+| `Y_M_D`    | Final date of in-season data, as a string of format YYYY-MM-DD |
+| `FM`       | Final month of in-season data, used in `subset_partial_year()` |
+| `FD`       | Final day of in-season data, used in `subset_partial_year()` |
+
+Another point of *USER INTERVENTION* is the `vas` object.  This is the `CatchToDate` for P. halibut (north of 40 deg. 10 min. N. lat.) as posted on the final date of the in-season data to the Vessel Account System (VAS: https://www.webapps.nwfsc.noaa.gov/apex/ifq/f?p=155:1::::::). 
+
+A final point of *USER INTERVENTION*: Users should ensure the most recent version of `load_data()` is being used.
+
+## `Inseason_Calculations.Rmd`
+This script is the heart of the in-season data request.  The historical CS data are stratified (`stratify_4phlb`) so that historical percent of P. halibut catch to (in-season) date can be calculated (`insea_perc_cs_catch`).  Catch Shares viabilities are prepped (`insea_viabs_prep` with `em = FALSE`).  The EM data are checked (`insea_em_check`) for compatibility with the observer in-season catch data. EM viabilities are prepped (`insea_viabs_prep` with `em = TRUE`) and historical percent of EM P. halibut catch is estimated from `EMOrig_Proc` using `insea_perc_em_catch`.
+
+Catch Shares mortalities are estimated with `insea_cs_mort`; EM mortality estimates are produced by `insea_em_mort` and; At-sea Hake mortalities are estimated with `insea_ashop_mort` - the only At-sea Hake function.
+
+## `Inseason_Reporting.Rmd`
+This script calls and runs the other three scripts and as such, it is the only script that should be knitted.  Knitting this script should produce all the output needed for IPHC. 
+
+***
+```{r outro, include=FALSE}
+pkg <- "knitr"
+pkg.version <- installed.packages()[pkg, 'Version']
+
+pkg.info <- paste("`knitr` version", pkg.version, sep=" ")
+Rver <- paste(R.Version()$version.string, " x", strsplit(R.Version()$arch, "_")[[1]][2], sep = "")
+os <- paste(as.character(Sys.info()[1:2]), collapse = " ")
+```
+This document was processed by `r pkg.info` using `r Rver` on a `r os` machine. 
+
